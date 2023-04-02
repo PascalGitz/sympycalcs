@@ -62,7 +62,7 @@ def eq_render(variables, parameters=False):
     Eq_params = []
     for i in range(0,len(subs.symbols)):
         if parameters!=False:
-            Eq_param = Eq(Symbol(f'{subs.symbols[i]}'), subs.values[i]).subs(parameters)
+            Eq_param = Eq(Symbol(f'{subs.symbols[i]}'), subs.values[i]).subs(parameters).simplify().evalf(3)
             Eq_params.append(Eq_param)
 
 
@@ -75,15 +75,16 @@ def eq_render(variables, parameters=False):
 
 
     Eq_tot = list(dict.fromkeys(Eq_tot))
-    # print(Eq_tot)
     for Eq in Eq_tot:
         display(Eq)
 
+    #return
     Eq_params_rhs = []
     for Eq in Eq_params:
         Eq_params_rhs.append(Eq.rhs)
 
-    return Eq_params_rhs
+    if parameters!= False:
+        return Eq_params_rhs
 
 
 

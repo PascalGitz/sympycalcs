@@ -27,7 +27,7 @@ def eq_render(variables, parameters=False):
     x = out.getvalue().replace(" ", "").split("\n")
     
     try:
-        Eq_raw_rhs = [a.split("=")[1].replace("sp.", "") for a in x if "=" in a]
+        Eq_raw_rhs = [a.split("=")[1].replace("sp.", "").replace("u.","") for a in x if "=" in a]
         Eq_raw_lhs = [a.split("=")[0] for a in x if "=" in a]
         
         Eq_raws = []
