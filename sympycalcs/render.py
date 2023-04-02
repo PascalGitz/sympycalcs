@@ -1,8 +1,15 @@
-def eq_render(variables):
-    """Renders all the variables in the current cell in a sympy Equation
+def eq_render(variables, parameters=False):
+    """Reads all Variables in the current cell. Then displays them as an sympy equation with it's lefthandside as the variable name,
+    and the righthandside of the input without substitution. The righthandside is converted via Sympify which does not handle all inputs!
+    It then displays the Equation with it's substitution. If the parameters are given, it also displays the Equation with substituted parameters. 
+
 
     Args:
-        variables (locals() or globals()): needs to be the globals in the current Notebook. For that it has to be a function input.
+        variables (dict): locals() has to be put in!
+        parameters (dict, optional): A dictionary containing all the parameters for the subsitution. Defaults to False.
+
+    Returns:
+        list: List of Equations with substituted parameters.
     """
     import io
     from contextlib import redirect_stdout
@@ -18,13 +25,17 @@ def eq_render(variables):
 
     #process each line...
     x = out.getvalue().replace(" ", "").split("\n")
-    Eq_raw_rhs = [a.split("=")[1] for a in x if "=" in a]
-    Eq_raw_lhs = [a.split("=")[0] for a in x if "=" in a]
     
-    Eq_raws = []
-    for i in range(0,len(Eq_raw_rhs)):
-        Eq_raw = Eq(Symbol(Eq_raw_lhs[i]), sympify(Eq_raw_rhs[i]))
-        Eq_raws.append(Eq_raw)
+    try:
+        Eq_raw_rhs = [a.split("=")[1].replace("sp.", "") for a in x if "=" in a]
+        Eq_raw_lhs = [a.split("=")[0] for a in x if "=" in a]
+        
+        Eq_raws = []
+        for i in range(0,len(Eq_raw_rhs)):
+            Eq_raw = Eq(Symbol(Eq_raw_lhs[i]), sympify(Eq_raw_rhs[i]))
+            Eq_raws.append(Eq_raw)
+    except:
+        pass
 
     x = [a.split("=")[0] for a in x if "=" in a] #all of the variables in the cell
 
@@ -41,21 +52,38 @@ def eq_render(variables):
 
     subs = equation({k:g[k] for k in x if k in g})    
 
-    Eq_subs = []
     ## raw equations
+    Eq_subs = []
     for i in range(0,len(subs.symbols)):
         Eq_sub = Eq(Symbol(f'{subs.symbols[i]}'), subs.values[i])
         Eq_subs.append(Eq_sub)
+    
+    #substitution with parameters
+    Eq_params = []
+    for i in range(0,len(subs.symbols)):
+        if parameters!=False:
+            Eq_param = Eq(Symbol(f'{subs.symbols[i]}'), subs.values[i]).subs(parameters)
+            Eq_params.append(Eq_param)
+
 
     Eq_tot =[]   
-    for i in range(0,len(Eq_raws)):
+    for i in range(0,len(Eq_subs)):
         Eq_tot.append(Eq_raws[i])
         Eq_tot.append(Eq_subs[i])
+        if parameters!=False:
+            Eq_tot.append(Eq_params[i])
+
 
     Eq_tot = list(dict.fromkeys(Eq_tot))
     # print(Eq_tot)
     for Eq in Eq_tot:
         display(Eq)
+
+    Eq_params_rhs = []
+    for Eq in Eq_params:
+        Eq_params_rhs.append(Eq.rhs)
+
+    return Eq_params_rhs
 
 
 
