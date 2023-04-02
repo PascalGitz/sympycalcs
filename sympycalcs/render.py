@@ -6,7 +6,7 @@ def eq_render(variables):
     """
     import io
     from contextlib import redirect_stdout
-    from sympy import Eq, Symbol
+    from sympy import Eq, Symbol, sympify
 
     offset=0
 
@@ -18,7 +18,16 @@ def eq_render(variables):
 
     #process each line...
     x = out.getvalue().replace(" ", "").split("\n")
+    Eq_raw_rhs = [a.split("=")[1] for a in x if "=" in a]
+    Eq_raw_lhs = [a.split("=")[0] for a in x if "=" in a]
+    
+    Eq_raws = []
+    for i in range(0,len(Eq_raw_rhs)):
+        Eq_raw = Eq(Symbol(Eq_raw_lhs[i]), sympify(Eq_raw_rhs[i]))
+        Eq_raws.append(Eq_raw)
+
     x = [a.split("=")[0] for a in x if "=" in a] #all of the variables in the cell
+
     g = variables
 
     # Class for equations with its parts
@@ -30,63 +39,27 @@ def eq_render(variables):
             pass
 
 
-    raw = equation({k:g[k] for k in x if k in g})    
-    subs = equation({g[k]:k for k in x if k in g})
+    subs = equation({k:g[k] for k in x if k in g})    
 
-    Eq_raws = []
-    ## raw equations
-    for i in range(0,len(raw.symbols)):
-        Eq_raw = Eq(Symbol(f'{raw.symbols[i]}'), raw.values[i])
-        Eq_raws.append(Eq_raw)
-
-    ## Backsubsitution
     Eq_subs = []
+    ## raw equations
+    for i in range(0,len(subs.symbols)):
+        Eq_sub = Eq(Symbol(f'{subs.symbols[i]}'), subs.values[i])
+        Eq_subs.append(Eq_sub)
 
-    # for i in range(0,len(raw.symbols)):
-    #     Eq_sub = Eq(Symbol(f'{raw.symbols[i]}'), raw.values[i]).subs(subs.dict)
-    #     Eq_subs.append(Eq_sub)
+    Eq_tot =[]   
+    for i in range(0,len(Eq_raws)):
+        Eq_tot.append(Eq_raws[i])
+        Eq_tot.append(Eq_subs[i])
 
-
-    def remove_value(dict, value):
-        for key in list(dict.keys()):
-            if dict[key] == value:
-                dict.pop(key)
-                return key
-        raise ValueError('value not found in dictionary')
-    
-    
-    for j in range(0,len(raw.symbols)):
-        for i in range(0,len(raw.symbols)):
-
-            symbol_subs = list(dict([list(subs.dict.items())[i]]).values())[0]
-            
-            # print(symbol_subs, dict_subs)
-            if Eq_raws[j].lhs != symbol_subs: 
-                subs_dict = subs.dict.copy()
-                remove_value(subs_dict, symbol_subs)
-
-                Eq_sub = Eq_raws[j].subs(subs_dict)
-                # print(Eq_sub)$
-
-            if Eq_sub!=True:
-                Eq_subs.append(Eq_sub)
-
-    Eq_tot = list(dict.fromkeys(Eq_subs + Eq_raws))
-    print(raw.dict, "\n",subs.dict)
-    for Eqs in Eq_tot:
-        display(Eqs)
+    Eq_tot = list(dict.fromkeys(Eq_tot))
+    # print(Eq_tot)
+    for Eq in Eq_tot:
+        display(Eq)
 
 
-    
 
-
-import sympy as sp
-
-a = sp.symbols("a")
-b = sp.cos(a)
-c = sp.sin(b)
-
-def param_render(params):
+def dict_render(params):
     """renders a dictionary containing the parameters
 
     Args:
