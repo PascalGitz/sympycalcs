@@ -100,7 +100,13 @@ def eq_render(variables, parameters=False, raw_input = True, units=False):
         Eq_params_rhs =[]
         for Eq in Eq_params:
             Eq_params_rhs.append(Eq.rhs)
-        return tuple(Eq_params_rhs)
+        if len(Eq_params_rhs)>1:
+            Eq_params_rhs = tuple(Eq_params_rhs)
+        else:
+            Eq_params_rhs = Eq_params_rhs[0]
+
+
+        return Eq_params_rhs
 
 
 
