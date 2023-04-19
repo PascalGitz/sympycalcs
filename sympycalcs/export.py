@@ -1,6 +1,6 @@
 import os
 
-def convert_notebook(notebook_path, output_format="tex", open=True, standalone=False):
+def convert_notebook(notebook_path, output_format="tex", cell_input = True, open=True, standalone=False):
     
     # Define paths for input and output files
     base_path, notebook_name = os.path.split(notebook_path)
@@ -13,7 +13,11 @@ def convert_notebook(notebook_path, output_format="tex", open=True, standalone=F
 
 
     # Convert notebook to markdown using nbconvert
-    os.system(f"jupyter nbconvert {notebook_path} --to markdown --no-input ")
+    if cell_input==False:
+        os.system(f"jupyter nbconvert {notebook_path} --to markdown --no-input ")
+    else:
+        os.system(f"jupyter nbconvert {notebook_path} --to markdown")
+
 
     # Convert markdown to desired output format using Pandoc
     os.system(f"pandoc --listings -f markdown -t {output_format} {md_path} -o {output_path} -F pandoc-crossref --citeproc")

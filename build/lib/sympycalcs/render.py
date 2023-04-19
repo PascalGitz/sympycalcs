@@ -1,4 +1,4 @@
-def eq_render(variables, parameters=False, raw_input = True, units=False):
+def eq_render(variables, parameters=False, raw_input = True, units=False, sub_input=True):
     
     
     
@@ -67,11 +67,12 @@ def eq_render(variables, parameters=False, raw_input = True, units=False):
         
 
         # Normal Equation with Variablename and its substitution
-        Eq_subs = []
-        for j in range(0,len(subs.symbols)):
-            Eq_sub = Eq(Symbol(f'{subs.symbols[j]}'), subs.values[j])
-            Eq_subs.append(Eq_sub)
-        Eq_tot.append(Eq_subs[i])
+        if sub_input != False:
+            Eq_subs = []
+            for j in range(0,len(subs.symbols)):
+                Eq_sub = Eq(Symbol(f'{subs.symbols[j]}'), subs.values[j])
+                Eq_subs.append(Eq_sub)
+            Eq_tot.append(Eq_subs[i])
         
         # Equation with substituted Parameters
         if parameters!=False:
@@ -122,3 +123,16 @@ def dict_render(params):
 
     for i in range(0,len(symbols)):
         display(Eq(Symbol(f'{symbols[i]}'), values[i]))   
+
+
+
+
+def eq_display(*args):
+
+    from sympy import sympify, Eq
+
+    from IPython.display import display
+    for i in range(0, len(args), 2):
+        lhs = sympify(args[i]) if isinstance(args[i], str) else args[i]
+        rhs = sympify(args[i+1]) if isinstance(args[i+1], str) else args[i+1]
+        display(Eq(lhs,rhs))
