@@ -16,6 +16,10 @@ def eq_render(variables, parameters=False, raw_input = True, units=False, sub_in
     import io
     from contextlib import redirect_stdout
     from sympy import Eq, Symbol, sympify
+    from sympy.printing.latex import latex
+    from IPython.display import display, Markdown
+
+
 
     offset=0
     local_vars = variables
@@ -125,6 +129,24 @@ def dict_render(params):
         display(Eq(Symbol(f'{symbols[i]}'), values[i]))   
 
 
+
+
+def dict_to_table(d):
+    keys = list(d.keys())
+    n = len(keys)
+    rows = n // 2 + (n % 2 != 0)
+    table = "| Symbol | Menge | Symbol | Menge |\n|---|---|---|---|\n"
+    for i in range(rows):
+        for j in range(2):
+            index = i * 2 + j
+            if index < n:
+                key = keys[index]
+                value = d[key]
+                table += f"| ${latex(Symbol(key))}$ | ${latex(value)}$ "
+            else:
+                table += "| - | - "
+        table += "|\n"
+    display(Markdown(table))
 
 
 def eq_display(*args):
