@@ -1,18 +1,15 @@
-
-## Function import
-from sympy import symbols, Rational, Eq, Symbol
-from sympy.physics.units import convert_to, m
-import render as rend
-from IPython.display import display,Markdown
-
-## define the Symbol outside of the function, otherwise it will get rendered as True
-h, f_ctm = symbols("h, f_ctm")
-
-
 def m_cr():
     """Zeigt die Berechnung des Rissmoments für einen Rechteckquerschnitt.
     returns the calculations as a tuple.
     """
+    ## Function import
+    from sympy import symbols, Rational, Eq, Symbol
+    from sympy.physics.units import convert_to, m
+    import render as rend
+    from IPython.display import display,Markdown
+
+    ## define the Symbol outside of the function, otherwise it will get rendered as True
+    h, f_ctm = symbols("h, f_ctm")
 
     
     display(Markdown("""

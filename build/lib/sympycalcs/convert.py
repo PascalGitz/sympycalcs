@@ -1,23 +1,36 @@
-def param_value(params):
+
+
+def param_value(input_dict):
     """Converts the dictionary containing parameters with units to a unitless dictionary.
 
     Args:
-        params (dict): Parameters with units
+        input_dict (dict): Parameters with units
 
     Returns:
         dict: Parameters without units in base SI
     """
-    from sympy.physics.units import convert_to, m, seconds, N
-    parameter_plots = params.copy()
+    from sympy.physics.units import convert_to, m, second, N
+    from sympy import Mul
 
-    for units in parameter_plots:
-        SI_units = [m,N,seconds]
-        if type(parameter_plots[units]) == float:
-            parameter_plots[f'{units}'] = convert_to(parameter_plots[units],SI_units)
+    result_dict = {}
+    base_units = [N,m,second]  # Beispielhafte Liste der SI-Basiseinheiten
+    
+    for key, value in input_dict.items():
+        converted_value = convert_to(value, base_units)
+        
+        if isinstance(converted_value, Mul):
+            numeric_factor = converted_value.args[0]
+            unit_factor = Mul(*converted_value.args[1:])
         else:
-            parameter_plots[f'{units}'] = convert_to(parameter_plots[units],SI_units).args[0]
+            numeric_factor = converted_value
+            unit_factor = 1
+        
+        result_dict[key] = numeric_factor
+        
+    return result_dict
 
-    return parameter_plots
+
+
 
 def expr_value(expr, params=False, unit=False):
     from sympy.physics.units import convert_to

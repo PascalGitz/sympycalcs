@@ -1,7 +1,5 @@
-import os
-
 def convert_notebook(notebook_path, output_format="tex", cell_input = True, open=True, standalone=False):
-    
+    import os
     # Define paths for input and output files
     base_path, notebook_name = os.path.split(notebook_path)
     notebook_name_without_ext = os.path.splitext(notebook_name)[0]
@@ -28,5 +26,19 @@ def convert_notebook(notebook_path, output_format="tex", cell_input = True, open
     os.remove(md_path)
     if open ==True:
         os.startfile(output_path)
+
+def pdf_to_svg(dir):
+    import os
+    import subprocess
+
+    inkscape_path = r'C:\Program Files\Inkscape\bin\inkscape.exe'
+    input_dir = dir
+    output_dir = dir
+
+    for filename in os.listdir(input_dir):
+        if filename.endswith(".pdf"):
+            input_file = os.path.join(input_dir, filename)
+            output_file = os.path.join(output_dir, os.path.splitext(filename)[0] + ".svg")
+            subprocess.run([inkscape_path, "--export-type=svg", "--pdf-poppler", "-l", f'--export-filename={output_file}', input_file])
 
 

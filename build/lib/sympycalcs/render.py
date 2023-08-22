@@ -16,8 +16,7 @@ def eq_render(variables, parameters=False, raw_input = True, units=False, sub_in
     import io
     from contextlib import redirect_stdout
     from sympy import Eq, Symbol, sympify
-    from sympy.printing.latex import latex
-    from IPython.display import display, Markdown
+
 
 
 
@@ -130,31 +129,35 @@ def dict_render(params):
 
 
 
-
 def dict_to_table(d):
-    keys = list(d.keys())
+    from sympy import Eq, Symbol, latex
+    from IPython.display import display, Markdown
+    
+    keys = sorted(d.keys())
     n = len(keys)
-    rows = n // 2 + (n % 2 != 0)
-    table = "| Symbol | Menge | Symbol | Menge |\n|---|---|---|---|\n"
-    for i in range(rows):
-        for j in range(2):
-            index = i * 2 + j
-            if index < n:
-                key = keys[index]
-                value = d[key]
-                table += f"| ${latex(Symbol(key))}$ | ${latex(value)}$ "
-            else:
-                table += "| - | - "
-        table += "|\n"
+    table = "|   |   |\n|---|---|\n"
+    for i in range(n):
+        key = keys[i]
+        value = d[key]
+        table += f"| ${latex(Eq(Symbol(key), value))}$ "
+        if i % 2 == 1:
+            table += "|\n"
+    if n % 2 == 1:
+        table += "| |\n"
     display(Markdown(table))
 
 
+
+
 def eq_display(*args):
-
     from sympy import sympify, Eq
-
     from IPython.display import display
+
+
     for i in range(0, len(args), 2):
         lhs = sympify(args[i]) if isinstance(args[i], str) else args[i]
         rhs = sympify(args[i+1]) if isinstance(args[i+1], str) else args[i+1]
         display(Eq(lhs,rhs))
+
+
+
