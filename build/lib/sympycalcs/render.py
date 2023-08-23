@@ -133,13 +133,16 @@ def dict_to_table(d):
     from sympy import Eq, Symbol, latex
     from IPython.display import display, Markdown
     
-    keys = sorted(d.keys())
-    n = len(keys)
+    sorted_items = sorted(d.items(), key=lambda item: str(item[0]))  # Schlüssel alphabetisch sortieren
+    n = len(sorted_items)
     table = "|   |   |\n|---|---|\n"
-    for i in range(n):
-        key = keys[i]
-        value = d[key]
-        table += f"| ${latex(Eq(Symbol(key), value))}$ "
+    for i, (key, value) in enumerate(sorted_items):
+        if isinstance(key, str):
+            key_sym = Symbol(key)  # Benutzerdefiniertes Symbol aus der Zeichenkette erstellen
+        else:
+            key_sym = key  # Verwende den Schlüssel direkt, wenn es bereits ein Symbol ist
+        
+        table += f"| ${latex(Eq(key_sym, value))}$ "
         if i % 2 == 1:
             table += "|\n"
     if n % 2 == 1:

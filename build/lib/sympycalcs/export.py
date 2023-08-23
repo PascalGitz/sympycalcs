@@ -27,7 +27,7 @@ def convert_notebook(notebook_path, output_format="tex", cell_input = True, open
     if open ==True:
         os.startfile(output_path)
 
-def pdf_to_svg(dir):
+def pdf_to_svg(dir, delete_original=False):
     import os
     import subprocess
 
@@ -41,4 +41,6 @@ def pdf_to_svg(dir):
             output_file = os.path.join(output_dir, os.path.splitext(filename)[0] + ".svg")
             subprocess.run([inkscape_path, "--export-type=svg", "--pdf-poppler", "-l", f'--export-filename={output_file}', input_file])
 
+            if delete_original:
+                os.remove(input_file)
 
