@@ -4,10 +4,12 @@ setup(
     name='sympycalcs',
     packages=find_packages(include=['sympycalcs']),
     version='0.1.0',
-    description='Provides simple renders for Sympy calculations based on the variables in a jupyter cell. Additionaly some Export-Functions to Word or Latex are provided',
+    description='Provides some helper functions to create reproducible calculations done in sympy. The focus lies only on the output of cells.',
     author='Pascal Gitz',
     install_requires=[
         
   ],
 )
+
+
 

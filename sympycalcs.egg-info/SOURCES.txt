@@ -1,6 +1,7 @@
 setup.py
 sympycalcs/__init__.py
 sympycalcs/beton.py
+sympycalcs/calcs.py
 sympycalcs/convert.py
 sympycalcs/export.py
 sympycalcs/render.py

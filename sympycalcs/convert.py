@@ -1,5 +1,3 @@
-
-
 def param_value(input_dict):
     """Converts the dictionary containing parameters with units to a unitless dictionary.
 
@@ -29,17 +27,4 @@ def param_value(input_dict):
         
     return result_dict
 
-
-
-
-def expr_value(expr, params=False, unit=False):
-    from sympy.physics.units import convert_to
-    
-    if params != False:
-        exp = expr.subs(params).simplify().evalf(3)
-    
-    if unit != False and params!=False:
-        exp = convert_to(expr.subs(params).simplify().evalf(3), unit)
-
-    return(exp)
 
