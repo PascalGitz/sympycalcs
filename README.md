@@ -12,4 +12,5 @@ As I'm working solely in Jupyter-Notebooks I skipped the parts that focus on dif
 While working with basic sympy I struggled to the generated expressions in a convenient way.
 -  For that I added some display functions (in Markdown tables or latex equations)
 -  Function that converts my parameters into SI-units and then removes the units. This helps for generating plots.
+-  Useful for my workflow was to convert PDFs to SVG, as i drew pictures in a CAD software, that was only capable of exporting PDFs efficiently. In notebooks it is prefered to work with svg.
 
