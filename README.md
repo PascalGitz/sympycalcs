@@ -13,4 +13,5 @@ While working with basic sympy I struggled to the generated expressions in a con
 -  For that I added some display functions (in Markdown tables or latex equations)
 -  Function that converts my parameters into SI-units and then removes the units. This helps for generating plots.
 -  Useful for my workflow was to convert PDFs to SVG, as i drew pictures in a CAD software, that was only capable of exporting PDFs efficiently. In notebooks it is prefered to work with svg.
+- the Beton module is only in testing phase, since I'm looking a way to predefine heavily used calculations in structural engineering.
 
