@@ -1,9 +1,11 @@
+LICENSE.txt
 setup.py
 sympycalcs/__init__.py
 sympycalcs/beton.py
 sympycalcs/calcs.py
 sympycalcs/convert.py
 sympycalcs/export.py
+sympycalcs/helpers.py
 sympycalcs/render.py
 sympycalcs.egg-info/PKG-INFO
 sympycalcs.egg-info/SOURCES.txt
