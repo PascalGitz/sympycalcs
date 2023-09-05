@@ -1,12 +1,40 @@
+"""
+Algebraic Equations with SymPy
+==============================
+
+These tools define relations that all high school and college students would
+recognize as mathematical equations. They consist of a left hand side (lhs)
+and a right hand side (rhs) connected by a relation operator such as "=". At
+present the "=" relation operator is the only option. The relation operator may
+not be set.
+
+This class should not be confused with the Boolean class ``Equality``
+(abbreviated ``Eq``) which specifies that the equality of two objects is
+``True``.
+
+This tool applies operations to both sides of the equation simultaneously, just
+as students are taught to do when attempting to isolate (solve for) a
+variable. Thus the statement ``Equation/b`` yields a new equation
+``Equation.lhs/b = Equation.rhs/b``
+
+The intent is to allow using the mathematical tools in SymPy to rearrange
+equations and perform algebra in a stepwise fashion. In this way more people
+can successfully perform algebraic rearrangements without stumbling over
+missed details such as a negative sign. This mimics the capabilities available
+in [SageMath](https://www.sagemath.org/) and
+[Maxima](http://maxima.sourceforge.net/).
+"""
 import sys
 
+import sympy
 from sympy.core.add import _unevaluated_Add
 from sympy.core.expr import Expr
 from sympy.core.basic import Basic
 from sympy.core.evalf import EvalfMixin
 from sympy.core.sympify import _sympify
 import functools
-import sympy as sp
+
+
 
 
 class Equation(Basic, EvalfMixin):
@@ -248,9 +276,9 @@ class Equation(Basic, EvalfMixin):
     """
 
     def __new__(cls, lhs, rhs, **kwargs):
-        lhs = sp.sympify(lhs)
-        rhs = sp.sympify(rhs)
-        if not isinstance(lhs, sp.Expr) or not isinstance(rhs, sp.Expr):
+        lhs = _sympify(lhs)
+        rhs = _sympify(rhs)
+        if not isinstance(lhs, Expr) or not isinstance(rhs, Expr):
             raise TypeError('lhs and rhs must be valid sympy expressions.')
         return super().__new__(cls, lhs, rhs)
 
@@ -287,17 +315,6 @@ class Equation(Basic, EvalfMixin):
         Returns the rhs of the equation.
         """
         return self.args[1]
-
-
-    def __eq__(self, other):
-        return isinstance(other, Equation) and \
-               self.lhs == other.lhs and self.rhs == other.rhs
-
-    def _latex(self, printer):
-        lhs_latex = printer._print(self.lhs)
-        rhs_latex = printer._print(self.rhs)
-        return f"{lhs_latex} = {rhs_latex}"
-
 
     def as_Boolean(self):
         """
@@ -669,4 +686,370 @@ class Equation(Basic, EvalfMixin):
             except AttributeError:
                 raise AttributeError('`side` must equal "lhs" or "rhs".')
 
+    #####
+    # Output helper functions
+    #####
 
+
+    def _latex(self, printer):
+        lhs_latex = printer._print(self.lhs)
+        rhs_latex = printer._print(self.rhs)
+        return f"{lhs_latex} = {rhs_latex}"
+
+
+def solve(f, *symbols, **flags):
+    """
+    Override of sympy `solve()`.
+
+    If passed an expression and variable(s) to solve for it behaves
+    almost the same as normal solve with `dict = True`, except that solutions
+    are wrapped in a FiniteSet() to guarantee that the output will be pretty
+    printed in Jupyter like environments.
+
+    If passed an equation or equations it returns solutions as a
+    `FiniteSet()` of solutions, where each solution is represented by an
+    equation or set of equations.
+
+    To get a Python `list` of solutions (pre-0.11.0 behavior) rather than a
+    `FiniteSet` issue the command `algwsym_config.output.solve_to_list = True`.
+    This also prevents pretty-printing in IPython and Jupyter.
+
+    Examples
+    --------
+    >>> a, b, c, x, y = symbols('a b c x y', real = True)
+    >>> import sys
+    >>> sys.displayhook = __command_line_printing__ # set by default on normal initialization.
+    >>> eq1 = Eqn(abs(2*x+y),3)
+    >>> eq2 = Eqn(abs(x + 2*y),3)
+    >>> B = solve((eq1,eq2))
+
+    Default human readable output on command line
+    >>> B
+    {{x = -3, y = 3}, {x = -1, y = -1}, {x = 1, y = 1}, {x = 3, y = -3}}
+
+    To get raw output turn off by setting
+    >>> algwsym_config.output.human_text=False
+    >>> B
+    FiniteSet(FiniteSet(Equation(x, -3), Equation(y, 3)), FiniteSet(Equation(x, -1), Equation(y, -1)), FiniteSet(Equation(x, 1), Equation(y, 1)), FiniteSet(Equation(x, 3), Equation(y, -3)))
+
+    Pre-0.11.0 behavior where a python list of solutions is returned
+    >>> algwsym_config.output.solve_to_list = True
+    >>> solve((eq1,eq2))
+    [[Equation(x, -3), Equation(y, 3)], [Equation(x, -1), Equation(y, -1)], [Equation(x, 1), Equation(y, 1)], [Equation(x, 3), Equation(y, -3)]]
+    >>> algwsym_config.output.solve_to_list = False # reset to default
+
+    `algwsym_config.output.human_text = True` with
+    `algwsym_config.output.how_code=True` shows both.
+    In Jupyter-like environments `show_code=True` yields the Raw output and
+    a typeset version. If `show_code=False` (the default) only the
+    typeset version is shown in Jupyter.
+    >>> algwsym_config.output.show_code=True
+    >>> algwsym_config.output.human_text=True
+    >>> B
+    Code version: FiniteSet(FiniteSet(Equation(x, -3), Equation(y, 3)), FiniteSet(Equation(x, -1), Equation(y, -1)), FiniteSet(Equation(x, 1), Equation(y, 1)), FiniteSet(Equation(x, 3), Equation(y, -3)))
+    {{x = -3, y = 3}, {x = -1, y = -1}, {x = 1, y = 1}, {x = 3, y = -3}}
+    """
+    from sympy.solvers.solvers import solve
+    from sympy.sets.sets import FiniteSet
+    from IPython.display import display
+    newf =[]
+    solns = []
+    displaysolns = []
+    contains_eqn = False
+    if hasattr(f,'__iter__'):
+        for k in f:
+            if isinstance(k, Equation):
+                newf.append(k.lhs-k.rhs)
+                contains_eqn = True
+            else:
+                newf.append(k)
+    else:
+        if isinstance(f, Equation):
+            newf.append(f.lhs - f.rhs)
+            contains_eqn = True
+        else:
+            newf.append(f)
+    flags['dict'] = True
+    result = solve(newf, *symbols, **flags)
+    if contains_eqn:
+        if len(result[0]) == 1:
+            for k in result:
+                for key in k.keys():
+                    val = k[key]
+                    tempeqn = Eqn(key, val)
+                    solns.append(tempeqn)
+        else:
+            for k in result:
+                solnset = []
+                for key in k.keys():
+                    val = k[key]
+                    tempeqn = Eqn(key, val)
+                    solnset.append(tempeqn)
+                if not algwsym_config.output.solve_to_list:
+                    solnset = FiniteSet(*solnset)
+                solns.append(solnset)
+    else:
+        solns = result
+    if algwsym_config.output.solve_to_list:
+        return list(solns)
+    else:
+        return FiniteSet(*solns)
+
+def solveset(f, symbols, domain=sympy.Complexes):
+    """
+    Very experimental override of sympy solveset, which we hope will replace
+    solve. Much is not working. It is not clear how to input a system of
+    equations unless you directly select `linsolve`, etc...
+    """
+    from sympy.solvers import solveset as solve
+    from IPython.display import display
+    newf = []
+    solns = []
+    displaysolns = []
+    contains_eqn = False
+    if hasattr(f, '__iter__'):
+        for k in f:
+            if isinstance(k, Equation):
+                newf.append(k.lhs - k.rhs)
+                contains_eqn = True
+            else:
+                newf.append(k)
+    else:
+        if isinstance(f, Equation):
+            newf.append(f.lhs - f.rhs)
+            contains_eqn = True
+        else:
+            newf.append(f)
+    result = solve(*newf, symbols, domain=domain)
+    # if contains_eqn:
+    #     if len(result[0]) == 1:
+    #         for k in result:
+    #             for key in k.keys():
+    #                 val = k[key]
+    #                 tempeqn = Eqn(key, val)
+    #                 solns.append(tempeqn)
+    #         display(*solns)
+    #     else:
+    #         for k in result:
+    #             solnset = []
+    #             displayset = []
+    #             for key in k.keys():
+    #                 val = k[key]
+    #                 tempeqn = Eqn(key, val)
+    #                 solnset.append(tempeqn)
+    #                 if algwsym_config.output.show_solve_output:
+    #                     displayset.append(tempeqn)
+    #             if algwsym_config.output.show_solve_output:
+    #                 displayset.append('-----')
+    #             solns.append(solnset)
+    #             if algwsym_config.output.show_solve_output:
+    #                 for k in displayset:
+    #                     displaysolns.append(k)
+    #         if algwsym_config.output.show_solve_output:
+    #             display(*displaysolns)
+    # else:
+    solns = result
+    return solns
+
+def sqrt(arg, evaluate = None):
+    """
+    Override of sympy convenience function `sqrt`. Simply divides equations
+    into two sides if `arg` is an instance of `Equation`. This avoids an
+    issue with the way sympy is delaying specialized applications of _Pow_ on
+    objects that are not basic sympy expressions.
+    """
+    from sympy.functions.elementary.miscellaneous import sqrt as symsqrt
+    if isinstance(arg, Equation):
+        return Equation(symsqrt(arg.lhs, evaluate), symsqrt(arg.rhs, evaluate))
+    else:
+        return symsqrt(arg,evaluate)
+
+# Pick up the docstring for sqrt from sympy
+from sympy.functions.elementary.miscellaneous import sqrt as symsqrt
+sqrt.__doc__+=symsqrt.__doc__
+del symsqrt
+
+def root(arg, n, k = 0, evaluate = None):
+    """
+    Override of sympy convenience function `root`. Simply divides equations
+    into two sides if `arg`  or `n` is an instance of `Equation`. This
+    avoids an issue with the way sympy is delaying specialized applications
+    of _Pow_ on objects that are not basic sympy expressions.
+    """
+    from sympy.functions.elementary.miscellaneous import root as symroot
+    if isinstance(arg, Equation):
+        return Equation(symroot(arg.lhs, n, k, evaluate),
+                        symroot(arg.rhs, n, k, evaluate))
+    if isinstance(n, Equation):
+        return Equation(symroot(arg, n.lhs, k, evaluate),
+                        symroot(arg, n.rhs, k, evaluate))
+    else:
+        return symroot(arg, n, k, evaluate)
+
+# pick up the docstring for root from sympy
+from sympy.functions.elementary.miscellaneous import root as symroot
+root.__doc__+=symroot.__doc__
+del symroot
+
+def Heaviside(arg, **kwargs):
+    """
+    Overide of the Heaviside function as implemented in Sympy. Get a recursion
+    error if use the normal class extension of a function to do this.
+
+    """
+    from sympy.functions.special.delta_functions import Heaviside as symHeav
+    if isinstance(arg, Equation):
+        return Equation(symHeav((arg.lhs), **kwargs),symHeav((arg.rhs),
+                                                             **kwargs))
+    else:
+        return symHeav(arg, **kwargs)
+# Pick up the docstring for Heaviside from Sympy.
+from sympy.functions.special.delta_functions import Heaviside as symHeav
+Heaviside.__doc__ += symHeav.__doc__
+del symHeav
+
+def collect(expr, syms, func=None, evaluate=None, exact=False,
+            distribute_order_term=True):
+    """
+    Override of sympy `collect()`.
+    """
+    from sympy.simplify.radsimp import collect
+    _eval_collect = getattr(expr, '_eval_collect', None)
+    if _eval_collect is not None:
+        return _eval_collect(syms, func, evaluate,
+                             exact, distribute_order_term)
+    else:
+        return collect(expr, syms, func, evaluate, exact,
+                       distribute_order_term)
+
+class Equality(sympy.Equality):
+    """
+    Extension of Equality class to include the ability to convert it to an
+    Equation.
+    """
+    def to_Equation(self):
+        """
+        Return: recasts the Equality as an Equation.
+        """
+        return Equation(self.lhs,self.rhs)
+
+    def to_Eqn(self):
+        """
+        Synonym for to_Equation.
+        Return: recasts the Equality as an Equation.
+        """
+        return self.to_Equation()
+
+Eq = Equality
+
+def __FiniteSet__repr__override__(self):
+    """Override of the `FiniteSet.__repr__(self)` to overcome sympy's
+    inconsistent wrapping of Finite Sets which prevents reliable use of
+    copy and paste of the code representation.
+    """
+    insidestr = ""
+    for k in self.args:
+        insidestr += k.__repr__() +', '
+    insidestr = insidestr[:-2]
+    reprstr = "FiniteSet("+ insidestr + ")"
+    return reprstr
+
+sympy.sets.FiniteSet.__repr__ = __FiniteSet__repr__override__
+
+def __FiniteSet__str__override__(self):
+    """Override of the `FiniteSet.__str__(self)` to overcome sympy's
+    inconsistent wrapping of Finite Sets which prevents reliable use of
+    copy and paste of the code representation.
+    """
+    insidestr = ""
+    for k in self.args:
+        insidestr += str(k) + ', '
+    insidestr = insidestr[:-2]
+    strrep = "{"+ insidestr + "}"
+    return strrep
+
+sympy.sets.FiniteSet.__str__ = __FiniteSet__str__override__
+
+#####
+# Extension of the Function class. For incorporation into SymPy this should
+# become part of the class
+#####
+class EqnFunction(sympy.Function):
+    """
+    Extension of the sympy Function class to understand equations. Each
+    sympy function impacted by this extension is listed in the documentation
+    that follows.
+    """
+    def __new__(cls, *args, **kwargs):
+        n = len(args)
+        eqnloc = None
+        neqns = 0
+        newargs = []
+        for k in args:
+            newargs.append(k)
+        if (n > 0):
+            for i in range(n):
+                if isinstance(args[i], Equation):
+                    neqns += 1
+                    eqnloc = i
+            if neqns > 1:
+                raise NotImplementedError('Function calls with more than one '
+                                          'Equation as a parameter are not '
+                                          'supported. You may be able to get '
+                                          'your desired outcome using .applyrhs'
+                                          ' and .applylhs.')
+            if neqns == 1:
+                newargs[eqnloc] = args[eqnloc].lhs
+                lhs = super().__new__(cls, *newargs, **kwargs)
+                newargs[eqnloc] = args[eqnloc].rhs
+                rhs = super().__new__(cls, *newargs, **kwargs)
+                return Equation(lhs,rhs)
+        return super().__new__(cls, *args, **kwargs)
+
+def str_to_extend_sympy_func(func:str):
+    """
+    Generates the string command to execute for a sympy function to
+    gain the properties of the extended EqnFunction class.
+    """
+    execstr = 'class ' + str(func) + '(' + str(
+        func) + ',EqnFunction):\n    ' \
+                'pass\n'
+    return execstr
+
+# TODO: Below will not be needed when incorporated into SymPy.
+# This is hacky, but I have not been able to come up with another way
+# of extending the functions programmatically, if this is separate package
+# from sympy that extends it after loading sympy.
+#  Functions listed in `skip` are not applicable to equations or cannot be
+#  extended because of `mro` error or `metaclass conflict`. This reflects
+#  that some of these are not members of the Sympy Function class.
+
+# Overridden elsewhere
+_extended_ = ('sqrt', 'root', 'Heaviside')
+
+# Either not applicable to equations or have not yet figured out a way
+# to systematically apply to an equation.
+# TODO examine these more carefully (top priority: real_root, cbrt, Ynm_c).
+_not_applicable_to_equations_ = ('Min', 'Max', 'Id', 'real_root', 'cbrt',
+        'unbranched_argument', 'polarify', 'unpolarify',
+        'piecewise_fold', 'E1', 'Eijk', 'bspline_basis',
+        'bspline_basis_set', 'interpolating_spline', 'jn_zeros',
+        'jacobi_normalized', 'Ynm_c', 'piecewise_exclusive', 'Piecewise',
+        'motzkin', 'hyper','meijerg', 'chebyshevu_root', 'chebyshevt_root',
+        'betainc_regularized')
+_skip_ = _extended_ + _not_applicable_to_equations_
+
+for func in sympy.functions.__all__:
+
+    if func not in _skip_:
+        try:
+            pass
+        except TypeError:
+            from warnings import warn
+            warn('SymPy function/operation ' + str(func) + ' may not work ' \
+                'properly with Equations. If you use it with Equations, ' \
+                'validate its behavior. We are working to address this ' \
+                'issue.')
+
+# Redirect python abs() to Abs()
+abs = sympy.Abs
