@@ -54,3 +54,28 @@ Simple display of an sympy equation for as many args as desired. First entry Eq1
 
 
 
+
+def eq_pretty_units(equation, unit=None):
+    """
+    Format a SymPy equation with a specified unit and return it as a LaTeX string.
+    
+    Args:
+        equation (sympy.Eq): The SymPy equation to format.
+        unit (str): The unit string to append to the equation.
+        equation_number (int): Optional equation number for LaTeX numbering.
+
+    Returns:
+        str: LaTeX-formatted equation with the specified unit.
+    """
+    if unit == None:
+        units = latex(equation.rhs.subs(equation.rhs.args[0], 1))
+    else:
+        units = fr'\mathrm{{{unit}}}'
+        
+        
+    formatted_equation_latex_sympy = latex(Eq(equation.lhs, equation.rhs.args[0]))
+    formatted_equation_latex = (
+        fr"\begin{{align}}{formatted_equation_latex_sympy} \, {units} \end{{align}}" 
+    )
+    return Latex(formatted_equation_latex)
+
