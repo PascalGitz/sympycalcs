@@ -3,4 +3,4 @@ Name: sympycalcs
 Version: 0.1.0
 Summary: Provides some helper functions to create reproducible calculations done in sympy. The focus lies only on the output of cells.
 Author: Pascal Gitz
-License-File: LICENSE.txt
+License-File: LICENSE
