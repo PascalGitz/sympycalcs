@@ -50,7 +50,7 @@ def param_value(input_dict, base_units=None):
     result = param_value(input_dict, base_units)
     # Output: {'mass': 5, 'distance': 3, 'time': 2}
     """
-    from sympy.physics.units import convert_to
+    from sympy.physics.units import convert_to, N,  m, second
     from sympy import Mul
 
     if base_units is None:
