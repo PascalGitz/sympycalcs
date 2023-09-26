@@ -245,35 +245,6 @@ def dict_to_table(d: Dict):
 
 
 
-def eq_display(*args):
-    """
-    Display a SymPy equation.
-
-    Parameters
-    ----------
-    *args : variable-length arguments
-        Pairs of arguments representing equations, where the first argument is the left-hand side (LHS)
-        and the second argument is the right-hand side (RHS).
-
-    Examples
-    --------
-    >>> eq_display('x', '2*x + 3')
-    Displays the equation x = 2*x + 3.
-
-    >>> eq_display(x, 2*x + 3)
-    Displays the equation x = 2*x + 3.
-
-    Notes
-    -----
-    - Accepts either string expressions or SymPy expressions for both LHS and RHS.
-    - Uses SymPy's `Eq` and `display` functions to format and display equations.
-    """
-    for i in range(0, len(args), 2):
-        lhs = sympify(args[i]) if isinstance(args[i], str) else args[i]
-        rhs = sympify(args[i + 1]) if isinstance(args[i + 1], str) else args[i + 1]
-        display(Eq(lhs, rhs))
-
-
 
 def pdf_to_svg(input_dir, output_dir=None, delete_original=False, inkscape_path=None):
     """
