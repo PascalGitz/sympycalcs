@@ -1,4 +1,11 @@
-def Eq_subs(target_eq, *substitution_eqs):
+from sympy.physics.units import convert_to, N,  m, second
+from sympy import Mul, Eq, Symbol, latex, sympify
+from IPython.display import display, Latex, Markdown
+import os
+import subprocess
+
+
+def eq_subs(target_eq, *substitution_eqs):
     """
     Substitute equations in target_eq with equations in substitution_eqs.
     Automatically generates new substitutions as needed until no further substitutions are possible.
@@ -18,7 +25,7 @@ def Eq_subs(target_eq, *substitution_eqs):
     eq_2 = sp.Eq(b, q * v)
     eq_3 = sp.Eq(c, t * k)
 
-    eq_1_subs = Eq_subs(eq_1, eq_1, eq_2, eq_3)
+    eq_1_subs = eq_subs(eq_1, eq_1, eq_2, eq_3)
     """
     result_eq = target_eq
     previous_result_eq = None
@@ -30,6 +37,7 @@ def Eq_subs(target_eq, *substitution_eqs):
                 result_eq = result_eq.subs(eq.lhs, eq.rhs)
                 
     return result_eq
+
 
 
 def param_value(input_dict, base_units=None):
@@ -50,8 +58,7 @@ def param_value(input_dict, base_units=None):
     result = param_value(input_dict, base_units)
     # Output: {'mass': 5, 'distance': 3, 'time': 2}
     """
-    from sympy.physics.units import convert_to, N,  m, second
-    from sympy import Mul
+
 
     if base_units is None:
         base_units = [N, m, second]  # Default base SI units
@@ -71,6 +78,8 @@ def param_value(input_dict, base_units=None):
     return result_dict
 
 
+
+
 def dict_render(params):
     """
     Render a dictionary containing parameter substitutions as SymPy equations.
@@ -87,8 +96,7 @@ def dict_render(params):
     # b = 5
     # c = 7
     """
-    from sympy import Eq, Symbol
-    from IPython.display import display
+
 
     symbols = list(params.keys())
     values = list(params.values())
@@ -121,7 +129,7 @@ def eq_pretty_units(equation, unit=None):
     latex_equation = eq_pretty_units(equation, unit='m/s^2')
     # Output: '\\begin{align}a = b + c\\, \\mathrm{m/s^2}\\end{align}'
     """
-    from sympy import Eq, latex, Latex
+
 
     if unit is None:
         units = latex(equation.rhs.subs(equation.rhs.args[0], 1))
@@ -149,8 +157,7 @@ def dict_to_table(d):
     dict_to_table(d)
     # Displays a formatted markdown table of the dictionary entries.
     """
-    from sympy import Eq, Symbol, latex
-    from IPython.display import display, Markdown
+
     
     def eq_pretty_units(equation):
         """
@@ -189,6 +196,7 @@ def dict_to_table(d):
 
 
 
+
 def eq_display(*args):
     """
     Simple display of a SymPy equation. Takes pairs of arguments where the first argument is the left-hand side (LHS)
@@ -201,8 +209,7 @@ def eq_display(*args):
     eq_display('x', '2*x + 3')
     # Displays the equation x = 2*x + 3.
     """
-    from sympy import sympify, Eq
-    from IPython.display import display
+
 
     for i in range(0, len(args), 2):
         lhs = sympify(args[i]) if isinstance(args[i], str) else args[i]
@@ -225,8 +232,7 @@ def pdf_to_svg(input_dir, output_dir=None, delete_original=False, inkscape_path=
     pdf_to_svg('pdf_files', output_dir='svg_files', delete_original=True, inkscape_path='/path/to/inkscape')
     # Converts PDF files in 'pdf_files' directory to SVG format, saves in 'svg_files', and deletes the original PDFs.
     """
-    import os
-    import subprocess
+
 
     if inkscape_path is None:
         # Default Inkscape executable path (update this to your Inkscape installation path)
