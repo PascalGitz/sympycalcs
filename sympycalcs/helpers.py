@@ -217,9 +217,15 @@ def dict_to_table(d: Dict):
         str
             LaTeX-formatted equation with the specified unit.
         """
-        units = latex(equation.rhs.subs(equation.rhs.args[0], 1))
+        if equation.rhs.args:
+            units = latex(equation.rhs.subs(equation.rhs.args[0], 1))
+            equation_rhs = equation.rhs.args[0]
+        else:
+            units = ""
+            equation_rhs = equation.rhs
+        
 
-        formatted_equation_latex_sympy = latex(Eq(equation.lhs, equation.rhs.args[0]))
+        formatted_equation_latex_sympy = latex(Eq(equation.lhs, equation_rhs))
         formatted_equation_latex = fr"${formatted_equation_latex_sympy} \, {units}$"
         return formatted_equation_latex
 

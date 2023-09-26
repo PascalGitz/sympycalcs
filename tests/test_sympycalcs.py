@@ -45,4 +45,40 @@ def test_eq_subs():
     # Check if the function handles self-referencing equations correctly
     assert result_eq == eq_5
 
-test_eq_subs()
+
+
+from sympy import Symbol, Eq
+from sympy.printing import latex
+from sympy.calculus.util import function_range
+import pytest
+
+@pytest.fixture
+def sample_dict():
+    # Create a sample dictionary for testing
+    x = Symbol('x')
+    y = Symbol('y')
+    z = Symbol('z')
+    w = Symbol('w')
+    a_eq = Eq(x,y)
+    b_val = 42
+    c_eq = 4
+    
+    return {'a': a_eq, 'b': b_val, 'c': c_eq}
+
+def test_dict_to_table(sample_dict):
+    # Test case for dict_to_table function
+    
+    # Capture the printed output
+    import io
+    from contextlib import redirect_stdout
+    
+    with io.StringIO() as buf, redirect_stdout(buf):
+        dict_to_table(sample_dict)
+        output = buf.getvalue()
+    
+if __name__ == '__main__':
+    pytest.main()
+
+
+
+
