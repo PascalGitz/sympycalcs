@@ -1,5 +1,5 @@
 from sympy.physics.units import convert_to, N,  m, second
-from sympy import Mul, Eq, Symbol, latex, sympify
+from sympy import Mul, Eq, Symbol, latex
 from IPython.display import display, Latex, Markdown
 from typing import Dict
 
@@ -90,7 +90,7 @@ def param_value(input_dict, base_units=None):
     result_dict = {}
 
     for key, value in input_dict.items():
-        converted_value = convert_to(value, SI)
+        converted_value = convert_to(value, base_units)
         
         if isinstance(converted_value, Mul):
             numeric_factor = converted_value.args[0]

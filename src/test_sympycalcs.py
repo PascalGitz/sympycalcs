@@ -11,7 +11,7 @@ if package_path not in sys.path:
 
 
 from sympy import Symbol, Eq, symbols
-from helpers import *
+from sympycalcs import *
 
 
 
