@@ -217,16 +217,19 @@ def dict_to_table(d: Dict):
         str
             LaTeX-formatted equation with the specified unit.
         """
+        
         if equation.rhs.args:
             units = latex(equation.rhs.subs(equation.rhs.args[0], 1))
             equation_rhs = equation.rhs.args[0]
+            formatted_equation_latex_sympy = latex(Eq(equation.lhs, equation_rhs))
+            formatted_equation_latex = fr"${formatted_equation_latex_sympy} \, {units}$"
+    
         else:
-            units = ""
             equation_rhs = equation.rhs
-        
+            formatted_equation_latex_sympy = latex(Eq(equation.lhs, equation_rhs))
+            formatted_equation_latex = fr"${formatted_equation_latex_sympy}$"
+         
 
-        formatted_equation_latex_sympy = latex(Eq(equation.lhs, equation_rhs))
-        formatted_equation_latex = fr"${formatted_equation_latex_sympy} \, {units}$"
         return formatted_equation_latex
 
     sorted_items = sorted(d.items(), key=lambda item: str(item[0]))  # Sort keys alphabetically
