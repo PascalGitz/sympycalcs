@@ -233,7 +233,7 @@ def dict_to_table(d: Dict):
 
     sorted_items = sorted(d.items(), key=lambda item: str(item[0]))  # Sort keys alphabetically
     n = len(sorted_items)
-    table = "|   |   |\n|---|---|\n"
+    table = "|  \u200B  | \u200B  |\n|---|---|\n"    
     for i, (key, value) in enumerate(sorted_items):
         if isinstance(key, str):
             key_sym = Symbol(key)  # Create a custom symbol from the string
@@ -247,7 +247,7 @@ def dict_to_table(d: Dict):
         if i % 2 == 1:
             table += "|\n"
     if n % 2 == 1:
-        table += "| |\n"
+        table += "| \u200B  |\n"
     display(Markdown(table))
 
 
