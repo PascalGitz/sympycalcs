@@ -1,3 +1,16 @@
+Metadata-Version: 2.1
+Name: sympycalcs
+Version: 0.0.1
+Summary: helper functions for sympy
+Author-email: Pascal Gitz <pascal.gitz@hslu.ch>
+Project-URL: Homepage, https://github.com/PascalGitz/sympycalcs
+Project-URL: Bug Tracker, https://github.com/PascalGitz/sympycalcs/issues
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: Microsoft :: Windows
+Requires-Python: >=3.10.12
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
 # sympycalcs
 
 I'm using sympy to create human readable and especially reproducable calculations exlusively in the output. My workflow consists of creating Jupyter-Notebooks that get converted via [Quarto](https://quarto.org/) into PDFs.

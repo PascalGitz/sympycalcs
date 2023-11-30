@@ -1,0 +1,19 @@
+[project]
+
+
+name = "sympycalcs"
+version = "0.0.1"
+authors = [
+  { name="Pascal Gitz", email="pascal.gitz@hslu.ch" },
+]
+description = "helper functions for sympy"
+readme = "README.md"
+requires-python = ">=3.10.12"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: Microsoft :: Windows",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/PascalGitz/sympycalcs"
+"Bug Tracker" = "https://github.com/PascalGitz/sympycalcs/issues"

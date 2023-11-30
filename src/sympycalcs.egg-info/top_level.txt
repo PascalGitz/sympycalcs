@@ -1,0 +1,4 @@
+examples
+examples_files
+sympycalcs
+test_sympycalcs

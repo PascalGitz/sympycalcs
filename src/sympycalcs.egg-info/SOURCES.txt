@@ -1,0 +1,11 @@
+LICENSE
+README.md
+pyproject.toml
+src/test_sympycalcs.py
+src/sympycalcs/__init__.py
+src/sympycalcs/beton.py
+src/sympycalcs/helpers.py
+src/sympycalcs.egg-info/PKG-INFO
+src/sympycalcs.egg-info/SOURCES.txt
+src/sympycalcs.egg-info/dependency_links.txt
+src/sympycalcs.egg-info/top_level.txt

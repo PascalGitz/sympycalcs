@@ -1,5 +1,5 @@
 from sympy.physics.units import convert_to, N,  m, second
-from sympy import Mul, Eq, Symbol, latex, sympify
+from sympy import Mul, Eq, Symbol, latex
 from IPython.display import display, Latex, Markdown
 from typing import Dict
 
@@ -217,16 +217,18 @@ def dict_to_table(d: Dict):
         str
             LaTeX-formatted equation with the specified unit.
         """
+        
         if equation.rhs.args:
             units = latex(equation.rhs.subs(equation.rhs.args[0], 1))
             equation_rhs = equation.rhs.args[0]
+            formatted_equation_latex_sympy = latex(Eq(equation.lhs, equation_rhs))
+            formatted_equation_latex = fr"${formatted_equation_latex_sympy} \, {units}$"
+    
         else:
-            units = ""
             equation_rhs = equation.rhs
-        
-
-        formatted_equation_latex_sympy = latex(Eq(equation.lhs, equation_rhs))
-        formatted_equation_latex = fr"${formatted_equation_latex_sympy} \, {units}$"
+            formatted_equation_latex_sympy = latex(Eq(equation.lhs, equation_rhs))
+            formatted_equation_latex = fr"${formatted_equation_latex_sympy}$"
+         
         return formatted_equation_latex
 
     sorted_items = sorted(d.items(), key=lambda item: str(item[0]))  # Sort keys alphabetically
