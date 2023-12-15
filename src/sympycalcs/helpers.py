@@ -203,37 +203,11 @@ def dict_to_table(d: Dict):
     - The keys are sorted alphabetically for consistent table order.
     """
 
-    def eq_pretty_units(equation):
-        """
-        Format a SymPy equation with a specified unit and return it as a LaTeX string.
-
-        Parameters
-        ----------
-        equation : sympy.Eq
-            The SymPy equation to format.
-
-        Returns
-        -------
-        str
-            LaTeX-formatted equation with the specified unit.
-        """
-        
-        if equation.rhs.args:
-            units = latex(equation.rhs.subs(equation.rhs.args[0], 1))
-            equation_rhs = equation.rhs.args[0]
-            formatted_equation_latex_sympy = latex(Eq(equation.lhs, equation_rhs))
-            formatted_equation_latex = fr"${formatted_equation_latex_sympy} \, {units}$"
     
-        else:
-            equation_rhs = equation.rhs
-            formatted_equation_latex_sympy = latex(Eq(equation.lhs, equation_rhs))
-            formatted_equation_latex = fr"${formatted_equation_latex_sympy}$"
-         
-        return formatted_equation_latex
 
     sorted_items = sorted(d.items(), key=lambda item: str(item[0]))  # Sort keys alphabetically
     n = len(sorted_items)
-    table = "|  \u200B  | \u200B  |\n|---|---|\n"    
+    table = "|  Parameter  | \u200B  |\n|---|---|\n"    
     for i, (key, value) in enumerate(sorted_items):
         if isinstance(key, str):
             key_sym = Symbol(key)  # Create a custom symbol from the string
@@ -241,9 +215,9 @@ def dict_to_table(d: Dict):
             key_sym = key  # Use the key directly if it's already a symbol
 
         # Call eq_pretty_units to format the equation with units
-        formatted_equation = eq_pretty_units(Eq(key_sym, value))
+        formatted_equation = latex(Eq(key_sym, value))
 
-        table += f"| {formatted_equation} "
+        table += f"| ${formatted_equation}$ "
         if i % 2 == 1:
             table += "|\n"
     if n % 2 == 1:
