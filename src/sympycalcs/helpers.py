@@ -3,6 +3,7 @@ from sympy.physics.units import convert_to, N,  m, second
 from IPython.display import display, Markdown
 
 from typing import Dict
+import subprocess
 import os
 
 
@@ -59,7 +60,7 @@ def params_value(input_dict, base_units=None):
         else:
             numeric_factor = converted_value
 
-        result_dict[key] = numeric_factor
+        result_dict[key] = float(numeric_factor)
 
     return result_dict
 

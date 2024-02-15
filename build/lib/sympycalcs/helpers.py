@@ -1,89 +1,52 @@
+import sympy
 from sympy.physics.units import convert_to, N,  m, second
-from sympy import Mul, Eq, Symbol, latex
-from IPython.display import display, Latex, Markdown
-from typing import Dict
+from IPython.display import display, Markdown
 
-import os
+from typing import Dict
 import subprocess
+import os
+
+
+
 
 
 def eq_subs(target_eq, *substitution_eqs):
     """
-    Substitute equations in target_eq with equations in substitution_eqs.
-    
-    Automatically generates new substitutions as needed until no further substitutions are possible.
-    The target equation itself will not be excluded from substitutions.
+    Substitute variables in the target equation using the provided substitution equations.
 
-    Parameters
-    ----------
-    target_eq : sympy.Eq
-        The target equation to perform substitutions on.
-    *substitution_eqs : variable-length arguments of sympy.Eq
-        Equations to be used for substitution.
+    Parameters:
+    target_eq (sympy.Eq): The equation in which variables will be substituted.
+    substitution_eqs (sympy.Eq): The equations representing the substitutions to be made.
 
-    Returns
-    -------
-    sympy.Eq
-        The target equation with substitutions applied.
+    Returns:
+    sympy.Eq: The target equation with variables substituted.
 
-    Example
-    -------
-    a, b, c, q, v, t, k = symbols('a b c q v t k')
-
-    eq_1 = Eq(a, b + c)
-    eq_2 = Eq(b, q * v)
-    eq_3 = Eq(c, t * k)
-
-    eq_1_subs = eq_subs(eq_1, eq_1, eq_2, eq_3)
-
-    Notes
-    -----
-    - This function iteratively applies substitutions to the target equation using the provided substitution equations.
-    - It continues to generate new substitutions until no further substitutions are possible.
-    - The target equation itself is not excluded from substitutions.
+    Example:
+    >>> from sympy import symbols, Eq
+    >>> x, y, z = symbols('x y z')
+    >>> eq1 = Eq(x + y, z)
+    >>> eq2 = Eq(x, 2)
+    >>> eq_subs(eq1, eq2)
+    Eq(2 + y, z)
     """
-    result_eq = target_eq
-    previous_result_eq = None
-    
-    while result_eq != previous_result_eq:
-        previous_result_eq = result_eq
-        for eq in substitution_eqs:
-            if eq != target_eq:
-                result_eq = result_eq.subs(eq.lhs, eq.rhs)
-                
-    return result_eq
+    for eq in substitution_eqs:
+        target_eq = target_eq.subs(eq.lhs, eq.rhs)           
+    return target_eq
 
 
 
-def param_value(input_dict, base_units=None):
+def params_value(input_dict, base_units=None):
     """
-    Convert a dictionary containing parameters with units to a unitless dictionary in base SI units.
+    Converts the values in the input dictionary to their numeric factors based on the provided base units.
 
-    Parameters
-    ----------
-    input_dict : dict
-        Parameters with units.
-    base_units : list of sympy.physics.units.*, optional
-        List of base SI units. Defaults to [N, m, second].
+    Args:
+        input_dict (dict): A dictionary containing the values to be converted.
+        base_units (list, optional): The base SI units to be used for conversion. Defaults to [N, m, second].
 
-    Returns
-    -------
-    dict
-        Parameters without units in base SI units.
-
-    Example
-    -------
-    >>> input_dict = {'mass': 5 * kg, 'distance': 3 * m, 'time': 2 * s}
-    >>> base_units = [N, m, s]
-    >>> result = param_value(input_dict, base_units)
-    Output: {'mass': 5, 'distance': 3, 'time': 2}
-
-    Notes
-    -----
-    - This function converts a dictionary of parameters with units to unitless values in base SI units.
-    - It uses SymPy's `convert_to` function to perform unit conversions.
-    - Default base SI units are [N, m, second], but you can specify custom units as needed.
+    Returns:
+        dict: A dictionary containing the converted numeric factors for each key in the input dictionary.
     """
+
     if base_units is None:
         base_units = [N, m, second]  # Default base SI units
 
@@ -92,7 +55,7 @@ def param_value(input_dict, base_units=None):
     for key, value in input_dict.items():
         converted_value = convert_to(value, base_units)
         
-        if isinstance(converted_value, Mul):
+        if isinstance(converted_value, sympy.Mul):
             numeric_factor = converted_value.args[0]
         else:
             numeric_factor = converted_value
@@ -100,86 +63,6 @@ def param_value(input_dict, base_units=None):
         result_dict[key] = numeric_factor
 
     return result_dict
-
-
-
-
-def dict_render(params):
-    """
-    Render a dictionary containing parameter substitutions as SymPy equations.
-
-    Parameters
-    ----------
-    params : dict
-        Parameters for substitution, where keys are symbols and values are numeric values.
-        
-    Example
-    -------
-    >>> params = {'a': 3, 'b': 5, 'c': 7}
-    >>> dict_render(params)
-    Displays:
-    a = 3
-    b = 5
-    c = 7
-
-    Notes
-    -----
-    - This function converts a dictionary of parameter substitutions into SymPy equations.
-    - The keys of the dictionary are treated as symbols, and the values are treated as their numeric values.
-    """
-    symbols = list(params.keys())
-    values = list(params.values())
-
-    for i in range(len(symbols)):
-        display(Eq(Symbol(symbols[i]), values[i]))
-
-
-
-
-def eq_pretty_units(equation, unit=None):
-    """
-    Format a SymPy equation with an optional specified unit and return it as a LaTeX string.
-
-    Parameters
-    ----------
-    equation : sympy.Eq
-        The SymPy equation to format.
-    unit : str, optional
-        The unit string to append to the equation. Default is `None`.
-
-    Returns
-    -------
-    str
-        LaTeX-formatted equation with the specified unit (if provided).
-
-    Examples
-    --------
-    >>> equation = Eq(a, b + c)
-    
-    # Without unit
-    >>> latex_equation = eq_pretty_units(equation)
-    Output: '\\begin{align}a = b + c\\end{align}'
-    
-    # With unit
-    >>> latex_equation = eq_pretty_units(equation, unit='m/s^2')
-    Output: '\\begin{align}a = b + c\\, \\mathrm{m/s^2}\\end{align}'
-
-    Notes
-    -----
-    - If no unit is provided, the function attempts to extract the unit from the right-hand side.
-    - The returned LaTeX string is wrapped in the 'align' environment.
-    """
-    if unit is None:
-        units = latex(equation.rhs.subs(equation.rhs.args[0], 1))
-    else:
-        units = fr'\mathrm{{{unit}}}'
-
-    formatted_equation_latex_sympy = latex(Eq(equation.lhs, equation.rhs.args[0]))
-    formatted_equation_latex = fr"\begin{{align}}{formatted_equation_latex_sympy} \, {units} \end{{align}}"
-    
-    return Latex(formatted_equation_latex)
-
-
 
 
 def dict_to_table(d: Dict):
@@ -210,12 +93,12 @@ def dict_to_table(d: Dict):
     table = "|  Parameter  | \u200B  |\n|---|---|\n"    
     for i, (key, value) in enumerate(sorted_items):
         if isinstance(key, str):
-            key_sym = Symbol(key)  # Create a custom symbol from the string
+            key_sym = sympy.Symbol(key)  # Create a custom symbol from the string
         else:
             key_sym = key  # Use the key directly if it's already a symbol
 
         # Call eq_pretty_units to format the equation with units
-        formatted_equation = latex(Eq(key_sym, value))
+        formatted_equation = sympy.latex(sympy.Eq(key_sym, value))
 
         table += f"| ${formatted_equation}$ "
         if i % 2 == 1:
@@ -276,10 +159,6 @@ def pdf_to_svg(input_dir, output_dir=None, delete_original=False, inkscape_path=
 
             if delete_original:
                 os.remove(input_file)
-
-
-
-
 
 
 
