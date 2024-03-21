@@ -1,5 +1,6 @@
 import sympy
-from sympy.physics.units import convert_to, N,  m, second
+import numpy
+from sympy.physics.units import convert_to, N,  m, second, degree, rad
 from IPython.display import display, Markdown
 
 from typing import Dict
@@ -33,37 +34,77 @@ def eq_subs(target_eq, *substitution_eqs):
         target_eq = target_eq.subs(eq.lhs, eq.rhs)           
     return target_eq
 
+def display_eq(lhs:str = 'x', rhs = 20):
+    display(sympy.Eq(sympy.Symbol(lhs), rhs))
 
+def type_application(exprs, func):
+    if isinstance(exprs, numpy.ndarray):  
+        result = [] 
 
-def params_value(input_dict, base_units=None):
+        for expr in exprs:
+            result.append(func(expr))   
+
+        return numpy.array(result).astype(type(result[0]))
+    
+    if isinstance(exprs, dict):
+        result_dict = {}
+
+        for key, value in exprs.items():
+            result_dict[key] = func(value)
+
+        return result_dict
+
+    if isinstance(exprs, sympy.core.relational.Equality):
+        lhs = func(exprs.lhs)
+        rhs = func(exprs.rhs)
+        return sympy.Eq(lhs, rhs)
+    
+    else:
+        return func(exprs)
+    
+
+def to_float(exprs, base_units=[m,N,second, rad]):
     """
-    Converts the values in the input dictionary to their numeric factors based on the provided base units.
+    Converts expressions to their numerical float values.
 
     Args:
-        input_dict (dict): A dictionary containing the values to be converted.
-        base_units (list, optional): The base SI units to be used for conversion. Defaults to [N, m, second].
+        exprs: The expression(s) to be converted to float.
+        base_units: The base units to be used for conversion. Default is [m, N, second, degree].
 
     Returns:
-        dict: A dictionary containing the converted numeric factors for each key in the input dictionary.
+        The numerical float value(s) of the input expression(s).
+
+    Raises:
+        None.
+
+    Examples:
+        >>> to_float(5*m)
+        5.0
+        >>> to_float([2*N, 3*m])
+        array([2.0, 3.0])
+        >>> to_float({'force': 10*N, 'length': 2*m})
+        {'force': 10.0, 'length': 2.0}
     """
 
-    if base_units is None:
-        base_units = [N, m, second]  # Default base SI units
-
-    result_dict = {}
-
-    for key, value in input_dict.items():
-        converted_value = convert_to(value, base_units)
-        
-        if isinstance(converted_value, sympy.Mul):
-            numeric_factor = converted_value.args[0]
+    def transformation(expr):
+        if isinstance(expr, (sympy.core.mul.Mul, sympy.core.add.Add)):
+            expr_si_base = convert_to(expr, base_units)            
+            replacements = [(base_units[i], 1)for i in range(len(base_units))]                
+            expr_numerical = float(expr_si_base.subs(replacements))                     
+            return expr_numerical
         else:
-            numeric_factor = converted_value
-
-        result_dict[key] = numeric_factor
-
-    return result_dict
-
+            return expr
+        
+    return type_application(exprs, transformation)
+    
+def to_convert(exprs, units):
+    def convert_unit(expr):
+        if isinstance(expr, (sympy.core.mul.Mul, sympy.core.add.Add)):
+            expr_converted = convert_to(expr, units)                              
+            return expr_converted
+        else:
+            return expr
+    return type_application(exprs, convert_unit)
 
 def dict_to_table(d: Dict):
     """

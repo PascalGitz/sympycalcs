@@ -1,1055 +1,197 @@
-"""
-Algebraic Equations with SymPy
-==============================
-
-These tools define relations that all high school and college students would
-recognize as mathematical equations. They consist of a left hand side (lhs)
-and a right hand side (rhs) connected by a relation operator such as "=". At
-present the "=" relation operator is the only option. The relation operator may
-not be set.
-
-This class should not be confused with the Boolean class ``Equality``
-(abbreviated ``Eq``) which specifies that the equality of two objects is
-``True``.
-
-This tool applies operations to both sides of the equation simultaneously, just
-as students are taught to do when attempting to isolate (solve for) a
-variable. Thus the statement ``Equation/b`` yields a new equation
-``Equation.lhs/b = Equation.rhs/b``
-
-The intent is to allow using the mathematical tools in SymPy to rearrange
-equations and perform algebra in a stepwise fashion. In this way more people
-can successfully perform algebraic rearrangements without stumbling over
-missed details such as a negative sign. This mimics the capabilities available
-in [SageMath](https://www.sagemath.org/) and
-[Maxima](http://maxima.sourceforge.net/).
-"""
-import sys
-
 import sympy
-from sympy.core.add import _unevaluated_Add
-from sympy.core.expr import Expr
-from sympy.core.basic import Basic
-from sympy.core.evalf import EvalfMixin
-from sympy.core.sympify import _sympify
-import functools
+import numpy
+from sympy.physics.units import convert_to, N,  m, second, degree, rad
+from IPython.display import display, Markdown
+
+from typing import Dict
+import subprocess
+import os
 
 
 
 
-class Equation(Basic, EvalfMixin):
+
+def eq_subs(target_eq, *substitution_eqs):
     """
-    This class defines an equation with a left-hand-side (tlhs) and a right-
-    hand-side (rhs) connected by the "=" operator (e.g. `p*V = n*R*T`).
+    Substitute variables in the target equation using the provided substitution equations.
 
-    Explanation
-    ===========
-    This class defines relations that all high school and college students
-    would recognize as mathematical equations. At present only the "=" relation
-    operator is recognized.
+    Parameters:
+    target_eq (sympy.Eq): The equation in which variables will be substituted.
+    substitution_eqs (sympy.Eq): The equations representing the substitutions to be made.
 
-    This class is intended to allow using the mathematical tools in SymPy to
-    rearrange equations and perform algebra in a stepwise fashion. In this
-    way more people can successfully perform algebraic rearrangements without
-    stumbling over missed details such as a negative sign.
+    Returns:
+    sympy.Eq: The target equation with variables substituted.
 
-    Create an equation with the call ``Equation(lhs,rhs)``, where ``lhs`` and
-    ``rhs`` are any valid Sympy expression. ``Eqn(...)`` is a synonym for
-    ``Equation(...)``.
+    Example:
+    >>> from sympy import symbols, Eq
+    >>> x, y, z = symbols('x y z')
+    >>> eq1 = Eq(x + y, z)
+    >>> eq2 = Eq(x, 2)
+    >>> eq_subs(eq1, eq2)
+    Eq(2 + y, z)
+    """
+    for eq in substitution_eqs:
+        target_eq = target_eq.subs(eq.lhs, eq.rhs)           
+    return target_eq
+
+def display_eq(lhs:str = 'x', rhs = 20):
+    display(sympy.Eq(sympy.Symbol(lhs), rhs))
+
+def type_application(exprs, func):
+    if isinstance(exprs,(numpy.ndarray)):  
+        result = [] 
+
+        for expr in exprs:
+            result.append(func(expr))   
+
+        return numpy.array(result).astype(float)
+    
+    if isinstance(exprs, (dict)):
+        result_dict = {}
+
+        for key, value in exprs.items():
+            result_dict[key] = func(value)
+
+        return result_dict
+
+    if isinstance(exprs, (sympy.core.relational.Equality)):
+        lhs = func(exprs.lhs)
+        rhs = func(exprs.rhs)
+        return sympy.Eq(lhs, rhs)
+    
+    else:
+        return transformation(exprs)
+    
+
+def to_float(exprs, base_units=[m,N,second, rad]):
+    """
+    Converts expressions to their numerical float values.
+
+    Args:
+        exprs: The expression(s) to be converted to float.
+        base_units: The base units to be used for conversion. Default is [m, N, second, degree].
+
+    Returns:
+        The numerical float value(s) of the input expression(s).
+
+    Raises:
+        None.
+
+    Examples:
+        >>> to_float(5*m)
+        5.0
+        >>> to_float([2*N, 3*m])
+        array([2.0, 3.0])
+        >>> to_float({'force': 10*N, 'length': 2*m})
+        {'force': 10.0, 'length': 2.0}
+    """
+
+    def transformation(expr):
+        if isinstance(expr, (sympy.core.mul.Mul, sympy.core.add.Add)):
+            expr_si_base = convert_to(expr, base_units)            
+            replacements = [(base_units[i], 1)for i in range(len(base_units))]                
+            expr_numerical = float(expr_si_base.subs(replacements))                     
+            return expr_numerical
+        else:
+            return expr
+    type_application(exprs, transformation)
+    
+
+
+def dict_to_table(d: Dict):
+    """
+    Create a Markdown table from a dictionary, with sorted keys in alphabetical order.
 
     Parameters
-    ==========
-    lhs: sympy expression, ``class Expr``.
-    rhs: sympy expression, ``class Expr``.
-    kwargs:
+    ----------
+    d : dict
+        Dictionary containing equations or values.
 
-    Examples
-    ========
-    NOTE: All the examples below are in vanilla python. You can get human
-    readable eqautions "lhs = rhs" in vanilla python by adjusting the settings
-    in `algwsym_config` (see it's documentation). Output is human readable by
-    default in IPython and Jupyter environments.
-    >>> from algebra_with_sympy import *
-    >>> a, b, c, x = var('a b c x')
-    >>> Equation(a,b/c)
-    Equation(a, b/c)
-    >>> t=Eqn(a,b/c)
-    >>> t
-    Equation(a, b/c)
-    >>> t*c
-    Equation(a*c, b)
-    >>> c*t
-    Equation(a*c, b)
-    >>> exp(t)
-    Equation(exp(a), exp(b/c))
-    >>> exp(log(t))
-    Equation(a, b/c)
+    Example
+    -------
+    >>> d = {'a': Eq(x, y), 'b': 42, 'c': Eq(z, w)}
+    >>> dict_to_table(d)
+    Displays a formatted Markdown table of the dictionary entries.
 
-    Simplification and Expansion
-    >>> f = Eqn(x**2 - 1, c)
-    >>> f
-    Equation(x**2 - 1, c)
-    >>> f/(x+1)
-    Equation((x**2 - 1)/(x + 1), c/(x + 1))
-    >>> (f/(x+1)).simplify()
-    Equation(x - 1, c/(x + 1))
-    >>> simplify(f/(x+1))
-    Equation(x - 1, c/(x + 1))
-    >>> (f/(x+1)).expand()
-    Equation(x**2/(x + 1) - 1/(x + 1), c/(x + 1))
-    >>> expand(f/(x+1))
-    Equation(x**2/(x + 1) - 1/(x + 1), c/(x + 1))
-    >>> factor(f)
-    Equation((x - 1)*(x + 1), c)
-    >>> f.factor()
-    Equation((x - 1)*(x + 1), c)
-    >>> f2 = f+a*x**2+b*x +c
-    >>> f2
-    Equation(a*x**2 + b*x + c + x**2 - 1, a*x**2 + b*x + 2*c)
-    >>> collect(f2,x)
-    Equation(b*x + c + x**2*(a + 1) - 1, a*x**2 + b*x + 2*c)
-
-    Apply operation to only one side
-    >>> poly = Eqn(a*x**2 + b*x + c*x**2, a*x**3 + b*x**3 + c*x)
-    >>> poly.applyrhs(factor,x)
-    Equation(a*x**2 + b*x + c*x**2, x*(c + x**2*(a + b)))
-    >>> poly.applylhs(factor)
-    Equation(x*(a*x + b + c*x), a*x**3 + b*x**3 + c*x)
-    >>> poly.applylhs(collect,x)
-    Equation(b*x + x**2*(a + c), a*x**3 + b*x**3 + c*x)
-
-    ``.apply...`` also works with user defined python functions
-    >>> def addsquare(eqn):
-    ...     return eqn+eqn**2
-    ...
-    >>> t.apply(addsquare)
-    Equation(a**2 + a, b**2/c**2 + b/c)
-    >>> t.applyrhs(addsquare)
-    Equation(a, b**2/c**2 + b/c)
-    >>> t.apply(addsquare, side = 'rhs')
-    Equation(a, b**2/c**2 + b/c)
-    >>> t.applylhs(addsquare)
-    Equation(a**2 + a, b/c)
-    >>> addsquare(t)
-    Equation(a**2 + a, b**2/c**2 + b/c)
-
-    Inaddition to ``.apply...`` there is also the less general ``.do``,
-    ``.dolhs``, ``.dorhs``, which only works for operations defined on the
-    ``Expr`` class (e.g.``.collect(), .factor(), .expand()``, etc...).
-    >>> poly.dolhs.collect(x)
-    Equation(b*x + x**2*(a + c), a*x**3 + b*x**3 + c*x)
-    >>> poly.dorhs.collect(x)
-    Equation(a*x**2 + b*x + c*x**2, c*x + x**3*(a + b))
-    >>> poly.do.collect(x)
-    Equation(b*x + x**2*(a + c), c*x + x**3*(a + b))
-    >>> poly.dorhs.factor()
-    Equation(a*x**2 + b*x + c*x**2, x*(a*x**2 + b*x**2 + c))
-
-    ``poly.do.exp()`` or other sympy math functions will raise an error.
-
-    Rearranging an equation (simple example made complicated as illustration)
-    >>> p, V, n, R, T = var('p V n R T')
-    >>> eq1=Eqn(p*V,n*R*T)
-    >>> eq1
-    Equation(V*p, R*T*n)
-    >>> eq2 =eq1/V
-    >>> eq2
-    Equation(p, R*T*n/V)
-    >>> eq3 = eq2/R/T
-    >>> eq3
-    Equation(p/(R*T), n/V)
-    >>> eq4 = eq3*R/p
-    >>> eq4
-    Equation(1/T, R*n/(V*p))
-    >>> 1/eq4
-    Equation(T, V*p/(R*n))
-    >>> eq5 = 1/eq4 - T
-    >>> eq5
-    Equation(0, -T + V*p/(R*n))
-
-    Substitution (#'s and units)
-    >>> L, atm, mol, K = var('L atm mol K', positive=True, real=True) # units
-    >>> eq2.subs({R:0.08206*L*atm/mol/K,T:273*K,n:1.00*mol,V:24.0*L})
-    Equation(p, 0.9334325*atm)
-    >>> eq2.subs({R:0.08206*L*atm/mol/K,T:273*K,n:1.00*mol,V:24.0*L}).evalf(4)
-    Equation(p, 0.9334*atm)
-
-    Substituting an equation into another equation:
-    >>> P, P1, P2, A1, A2, E1, E2 = symbols("P, P1, P2, A1, A2, E1, E2")
-    >>> eq1 = Eqn(P, P1 + P2)
-    >>> eq2 = Eqn(P1 / (A1 * E1), P2 / (A2 * E2))
-    >>> P1_val = (eq1 - P2).swap
-    >>> P1_val
-    Equation(P1, P - P2)
-    >>> eq2 = eq2.subs(P1_val)
-    >>> eq2
-    Equation((P - P2)/(A1*E1), P2/(A2*E2))
-    >>> P2_val = solve(eq2.subs(P1_val), P2).args[0]
-    >>> P2_val
-    Equation(P2, A2*E2*P/(A1*E1 + A2*E2))
-
-    Combining equations (Math with equations: lhs with lhs and rhs with rhs)
-    >>> q = Eqn(a*c, b/c**2)
-    >>> q
-    Equation(a*c, b/c**2)
-    >>> t
-    Equation(a, b/c)
-    >>> q+t
-    Equation(a*c + a, b/c + b/c**2)
-    >>> q/t
-    Equation(c, 1/c)
-    >>> t**q
-    Equation(a**(a*c), (b/c)**(b/c**2))
-
-    Utility operations
-    >>> t.reversed
-    Equation(b/c, a)
-    >>> t.swap
-    Equation(b/c, a)
-    >>> t.lhs
-    a
-    >>> t.rhs
-    b/c
-    >>> t.as_Boolean()
-    Eq(a, b/c)
-
-    `.check()` convenience method for `.as_Boolean().simplify()`
-    >>> from sympy import I, pi
-    >>> Equation(pi*(I+2), pi*I+2*pi).check()
-    True
-    >>> Eqn(a,a+1).check()
-    False
-
-    Differentiation
-    Differentiation is applied to both sides if the wrt variable appears on
-    both sides.
-    >>> q=Eqn(a*c, b/c**2)
-    >>> q
-    Equation(a*c, b/c**2)
-    >>> diff(q,b)
-    Equation(Derivative(a*c, b), c**(-2))
-    >>> diff(q,c)
-    Equation(a, -2*b/c**3)
-    >>> diff(log(q),b)
-    Equation(Derivative(log(a*c), b), 1/b)
-    >>> diff(q,c,2)
-    Equation(Derivative(a, c), 6*b/c**4)
-
-    If you specify multiple differentiation all at once the assumption
-    is order of differentiation matters and the lhs will not be
-    evaluated.
-    >>> diff(q,c,b)
-    Equation(Derivative(a*c, b, c), -2/c**3)
-
-    To overcome this specify the order of operations.
-    >>> diff(diff(q,c),b)
-    Equation(Derivative(a, b), -2/c**3)
-
-    But the reverse order returns an unevaulated lhs (a may depend on b).
-    >>> diff(diff(q,b),c)
-    Equation(Derivative(a*c, b, c), -2/c**3)
-
-    Integration can only be performed on one side at a time.
-    >>> q=Eqn(a*c,b/c)
-    >>> integrate(q,b,side='rhs')
-    b**2/(2*c)
-    >>> integrate(q,b,side='lhs')
-    a*b*c
-
-    Make a pretty statement of integration from an equation
-    >>> Eqn(Integral(q.lhs,b),integrate(q,b,side='rhs'))
-    Equation(Integral(a*c, b), b**2/(2*c))
-
-    Integration of each side with respect to different variables
-    >>> q.dorhs.integrate(b).dolhs.integrate(a)
-    Equation(a**2*c/2, b**2/(2*c))
-
-    Automatic solutions using sympy solvers. THIS IS EXPERIMENTAL. Please
-    report issues at https://github.com/gutow/Algebra_with_Sympy/issues.
-    >>> tosolv = Eqn(a - b, c/a)
-    >>> solve(tosolv,a)
-    FiniteSet(Equation(a, b/2 - sqrt(b**2 + 4*c)/2), Equation(a, b/2 + sqrt(b**2 + 4*c)/2))
-    >>> solve(tosolv, b)
-    FiniteSet(Equation(b, (a**2 - c)/a))
-    >>> solve(tosolv, c)
-    FiniteSet(Equation(c, a**2 - a*b))
+    Notes
+    -----
+    - This function formats equations with specified units using LaTeX.
+    - The keys are sorted alphabetically for consistent table order.
     """
 
-    def __new__(cls, lhs, rhs, **kwargs):
-        lhs = _sympify(lhs)
-        rhs = _sympify(rhs)
-        if not isinstance(lhs, Expr) or not isinstance(rhs, Expr):
-            raise TypeError('lhs and rhs must be valid sympy expressions.')
-        return super().__new__(cls, lhs, rhs)
-
-    def _get_eqn_name(self):
-        """
-        Tries to find the python string name that refers to the equation. In
-        IPython environments (IPython, Jupyter, etc...) looks in the user_ns.
-        If not in an IPython environment looks in __main__.
-        :return: string value if found or empty string.
-        """
-        human_text = algwsym_config.output.human_text
-        algwsym_config.output.human_text=False
-        import __main__ as shell
-        for k in dir(shell):
-            item = getattr(shell,k)
-            if isinstance(item,Equation):
-                if item.__repr__()==self.__repr__() and not \
-                        k.startswith('_'):
-                    algwsym_config.output.human_text=human_text
-                    return k
-        algwsym_config.output.human_text = human_text
-        return ''
-
-    @property
-    def lhs(self):
-        """
-        Returns the lhs of the equation.
-        """
-        return self.args[0]
-
-    @property
-    def rhs(self):
-        """
-        Returns the rhs of the equation.
-        """
-        return self.args[1]
-
-    def as_Boolean(self):
-        """
-        Converts the equation to an Equality.
-        """
-        return Equality(self.lhs, self.rhs)
-
-    def check(self, **kwargs):
-        """
-        Forces simplification and casts as `Equality` to check validity.
-        Parameters
-        ----------
-        kwargs any appropriate for `Equality`.
-
-        Returns
-        -------
-        True, False or an unevaluated `Equality` if truth cannot be determined.
-        """
-        return Equality(self.lhs, self.rhs, **kwargs).simplify()
-
-    @property
-    def reversed(self):
-        """
-        Swaps the lhs and the rhs.
-        """
-        return Equation(self.rhs, self.lhs)
-
-    @property
-    def swap(self):
-        """
-        Synonym for `.reversed`
-        """
-        return self.reversed
-
-    def _applytoexpr(self, expr, func, *args, **kwargs):
-        # Applies a function to an expression checking whether there
-        # is a specialized version associated with the particular type of
-        # expression. Errors will be raised if the function cannot be
-        # applied to an expression.
-        funcname = getattr(func, '__name__', None)
-        if funcname is not None:
-            localfunc = getattr(expr, funcname, None)
-            if localfunc is not None:
-                return localfunc(*args, **kwargs)
-        return func(expr, *args, **kwargs)
-
-    def apply(self, func, *args, side='both', **kwargs):
-        """
-        Apply an operation/function/method to the equation returning the
-        resulting equation.
-
-        Parameters
-        ==========
-
-        func: object
-            object to apply usually a function
-
-        args: as necessary for the function
-
-        side: 'both', 'lhs', 'rhs', optional
-            Specifies which side of the equation the operation will be applied
-            to. Default is 'both'.
-
-        kwargs: as necessary for the function
-         """
-        lhs = self.lhs
-        rhs = self.rhs
-        if side in ('both', 'lhs'):
-            lhs = self._applytoexpr(self.lhs, func, *args, **kwargs)
-        if side in ('both', 'rhs'):
-            rhs = self._applytoexpr(self.rhs, func, *args, **kwargs)
-        return Equation(lhs, rhs)
-
-    def applylhs(self, func, *args, **kwargs):
-        """
-        If lhs side of the equation has a defined subfunction (attribute) of
-        name ``func``, that will be applied instead of the global function.
-        The operation is applied to only the lhs.
-        """
-        return self.apply(func, *args, **kwargs, side='lhs')
-
-    def applyrhs(self, func, *args, **kwargs):
-        """
-        If rhs side of the equation has a defined subfunction (attribute) of
-        name ``func``, that will be applied instead of the global function.
-        The operation is applied to only the rhs.
-        """
-        return self.apply(func, *args, **kwargs, side='rhs')
-
-    class _sides:
-        """
-        Helper class for the `.do.`, `.dolhs.`, `.dorhs.` syntax for applying
-        submethods of expressions.
-        """
-
-        def __init__(self, eqn, side='both'):
-            self.eqn = eqn
-            self.side = side
-
-        def __getattr__(self, name):
-            func = None
-            if self.side in ('rhs', 'both'):
-                func = getattr(self.eqn.rhs, name, None)
-            else:
-                func = getattr(self.eqn.lhs, name, None)
-            if func is None:
-                raise AttributeError('Expressions in the equation have no '
-                                     'attribute `' + str(
-                    name) + '`. Try `.apply('
-                                     + str(name) + ', *args)` or '
-                                                   'pass the equation as a parameter to `'
-                                     + str(name) + '()`.')
-            return functools.partial(self.eqn.apply, func, side=self.side)
-
-    @property
-    def do(self):
-        return self._sides(self, side='both')
-
-    @property
-    def dolhs(self):
-        return self._sides(self, side='lhs')
-
-    @property
-    def dorhs(self):
-        return self._sides(self, side='rhs')
     
-    def _eval_rewrite(self, rule, args, **kwargs):
-        """Return Equation(L, R) as Equation(L - R, 0) or as L - R.
 
-        Parameters
-        ==========
-
-        evaluate : bool, optional
-            Control the evaluation of the result. If `evaluate=None` then
-            terms in L and R will not cancel but they will be listed in
-            canonical order; otherwise non-canonical args will be returned.
-            Default to True.
-        
-        eqn : bool, optional
-            Control the returned type. If `eqn=True`, then Equation(L - R, 0)
-            is returned. Otherwise, the L - R symbolic expression is returned.
-            Default to True.
-
-        Examples
-        ========
-        >>> from sympy import Add
-        >>> from sympy.abc import b, x
-        >>> from algebra_with_sympy import Equation
-        >>> eq = Equation(x + b, x - b)
-        >>> eq.rewrite(Add)
-        Equation(2*b, 0)
-        >>> eq.rewrite(Add, evaluate=None).lhs.args
-        (b, b, x, -x)
-        >>> eq.rewrite(Add, evaluate=False).lhs.args
-        (b, x, b, -x)
-        >>> eq.rewrite(Add, eqn=False)
-        2*b
-        >>> eq.rewrite(Add, eqn=False, evaluate=False).args
-        (b, x, b, -x)
-        """
-        if rule == Add:
-            # NOTE: the code about `evaluate` is very similar to
-            # sympy.core.relational.Equality._eval_rewrite_as_Add
-            eqn = kwargs.pop("eqn", True)
-            evaluate = kwargs.get('evaluate', True)
-            L, R = args
-            if evaluate:
-                # allow cancellation of args
-                expr = L - R
-            else:
-                args = Add.make_args(L) + Add.make_args(-R)
-                if evaluate is None:
-                    # no cancellation, but canonical
-                    expr = _unevaluated_Add(*args)
-                else:
-                    # no cancellation, not canonical
-                    expr = Add._from_args(args)
-            if eqn:
-                return self.func(expr, 0)
-            return expr
-
-    def subs(self, *args, **kwargs):
-        """Substitutes old for new in an equation after sympifying args.
-    
-        `args` is either:
-
-        * one or more arguments of type `Equation(old, new)`.
-        * two arguments, e.g. foo.subs(old, new)
-        * one iterable argument, e.g. foo.subs(iterable). The iterable may be:
-
-            - an iterable container with (old, new) pairs. In this case the
-              replacements are processed in the order given with successive
-              patterns possibly affecting replacements already made.
-            - a dict or set whose key/value items correspond to old/new pairs.
-              In this case the old/new pairs will be sorted by op count and in
-              case of a tie, by number of args and the default_sort_key. The
-              resulting sorted list is then processed as an iterable container
-              (see previous).
-        
-        If the keyword ``simultaneous`` is True, the subexpressions will not be
-        evaluated until all the substitutions have been made.
-
-        Please, read ``help(Expr.subs)`` for more examples.
-
-        Examples
-        ========
-
-        >>> from sympy.abc import a, b, c, x
-        >>> from algebra_with_sympy import Equation
-        >>> eq = Equation(x + a, b * c)
-
-        Substitute a single value:
-
-        >>> eq.subs(b, 4)
-        Equation(a + x, 4*c)
-
-        Substitute a multiple values:
-
-        >>> eq.subs([(a, 2), (b, 4)])
-        Equation(x + 2, 4*c)
-        >>> eq.subs({a: 2, b: 4})
-        Equation(x + 2, 4*c)
-
-        Substitute an equation into another equation:
-
-        >>> eq2 = Equation(x + a, 4)
-        >>> eq.subs(eq2)
-        Equation(4, b*c)
-
-        Substitute multiple equations into another equation:
-
-        >>> eq1 = Equation(x + a + b + c, x * a * b * c)
-        >>> eq2 = Equation(x + a, 4)
-        >>> eq3 = Equation(b, 5)
-        >>> eq1.subs(eq2, eq3)
-        Equation(c + 9, 5*a*c*x)
-
-        """
-        new_args = args
-        if all(isinstance(a, self.func) for a in args):
-            new_args = [{a.args[0]: a.args[1] for a in args}]
-        elif (len(args) == 1) and all(isinstance(a, self.func) for a in
-                                      args[0]):
-            raise TypeError("You passed into `subs` a list of elements of "
-                "type `Equation`, but this is not supported. Please, consider "
-                "unpacking the list with `.subs(*eq_list)` or select your "
-                "equations from the list and use `.subs(eq_list[0], eq_list["
-                "2], ...)`.")
-        elif any(isinstance(a, self.func) for a in args):
-            raise ValueError("`args` contains one or more Equation and some "
-                "other data type. This mode of operation is not supported. "
-                "Please, read `subs` documentation to understand how to "
-                "use it.")
-        return super().subs(*new_args, **kwargs)
-
-    #####
-    # Overrides of binary math operations
-    #####
-
-    @classmethod
-    def _binary_op(cls, a, b, opfunc_ab):
-        if isinstance(a, Equation) and not isinstance(b, Equation):
-            return Equation(opfunc_ab(a.lhs, b), opfunc_ab(a.rhs, b))
-        elif isinstance(b, Equation) and not isinstance(a, Equation):
-            return Equation(opfunc_ab(a, b.lhs), opfunc_ab(a, b.rhs))
-        elif isinstance(a, Equation) and isinstance(b, Equation):
-            return Equation(opfunc_ab(a.lhs, b.lhs), opfunc_ab(a.rhs, b.rhs))
+    sorted_items = sorted(d.items(), key=lambda item: str(item[0]))  # Sort keys alphabetically
+    n = len(sorted_items)
+    table = "|  Parameter  | \u200B  |\n|---|---|\n"    
+    for i, (key, value) in enumerate(sorted_items):
+        if isinstance(key, str):
+            key_sym = sympy.Symbol(key)  # Create a custom symbol from the string
         else:
-            return NotImplemented
+            key_sym = key  # Use the key directly if it's already a symbol
 
-    def __add__(self, other):
-        return self._binary_op(self, other, lambda a, b: a + b)
+        # Call eq_pretty_units to format the equation with units
+        formatted_equation = sympy.latex(sympy.Eq(key_sym, value))
 
-    def __radd__(self, other):
-        return self._binary_op(other, self, lambda a, b: a + b)
-
-    def __mul__(self, other):
-        return self._binary_op(self, other, lambda a, b: a * b)
-
-    def __rmul__(self, other):
-        return self._binary_op(other, self, lambda a, b: a * b)
-
-    def __sub__(self, other):
-        return self._binary_op(self, other, lambda a, b: a - b)
-
-    def __rsub__(self, other):
-        return self._binary_op(other, self, lambda a, b: a - b)
-
-    def __truediv__(self, other):
-        return self._binary_op(self, other, lambda a, b: a / b)
-
-    def __rtruediv__(self, other):
-        return self._binary_op(other, self, lambda a, b: a / b)
-
-    def __mod__(self, other):
-        return self._binary_op(self, other, lambda a, b: a % b)
-
-    def __rmod__(self, other):
-        return self._binary_op(other, self, lambda a, b: a % b)
-
-    def __pow__(self, other):
-        return self._binary_op(self, other, lambda a, b: a ** b)
-
-    def __rpow__(self, other):
-        return self._binary_op(other, self, lambda a, b: a ** b)
-
-    def _eval_power(self, other):
-        return self.__pow__(other)
-
-    #####
-    # Operation helper functions
-    #####
-    def expand(self, *args, **kwargs):
-        return Equation(self.lhs.expand(*args, **kwargs), self.rhs.expand(
-            *args, **kwargs))
-
-    def simplify(self, *args, **kwargs):
-        return self._eval_simplify(*args, **kwargs)
-
-    def _eval_simplify(self, *args, **kwargs):
-        return Equation(self.lhs.simplify(*args, **kwargs), self.rhs.simplify(
-            *args, **kwargs))
-
-    def _eval_factor(self, *args, **kwargs):
-        # TODO: cancel out factors common to both sides.
-        return Equation(self.lhs.factor(*args, **kwargs), self.rhs.factor(
-            *args, **kwargs))
-
-    def factor(self, *args, **kwargs):
-        return self._eval_factor(*args, **kwargs)
-
-    def _eval_collect(self, *args, **kwargs):
-        from sympy.simplify.radsimp import collect
-        return Equation(collect(self.lhs, *args, **kwargs),
-                        collect(self.rhs, *args, **kwargs))
-
-    def collect(self, *args, **kwargs):
-        return self._eval_collect(*args, **kwargs)
-
-    def evalf(self, *args, **kwargs):
-        return Equation(self.lhs.evalf(*args, **kwargs),
-                        self.rhs.evalf(*args, **kwargs))
-
-    n = evalf
-
-    def _eval_derivative(self, *args, **kwargs):
-        # TODO Find why diff and Derivative do not appear to pass through
-        #  kwargs to this. Since we cannot set evaluation of lhs manually
-        #  try to be intelligent about when to do it.
-        from sympy.core.function import Derivative
-        eval_lhs = False
-        if not (isinstance(self.lhs, Derivative)):
-            for sym in args:
-                if sym in self.lhs.free_symbols and not (
-                        _sympify(sym).is_number):
-                    eval_lhs = True
-        return Equation(self.lhs.diff(*args, **kwargs, evaluate=eval_lhs),
-                        self.rhs.diff(*args, **kwargs))
-
-    def _eval_Integral(self, *args, **kwargs):
-        side = kwargs.pop('side', None)  # Could not seem to pass values for
-        # `evaluate` through to here.
-        if side is None:
-            raise ValueError('You must specify `side="lhs"` or `side="rhs"` '
-                             'when integrating an Equation')
-        else:
-            try:
-                return (getattr(self, side).integrate(*args, **kwargs))
-            except AttributeError:
-                raise AttributeError('`side` must equal "lhs" or "rhs".')
-
-    #####
-    # Output helper functions
-    #####
+        table += f"| ${formatted_equation}$ "
+        if i % 2 == 1:
+            table += "|\n"
+    if n % 2 == 1:
+        table += "| \u200B  |\n"
+    display(Markdown(table))
 
 
-    def _latex(self, printer):
-        lhs_latex = printer._print(self.lhs)
-        rhs_latex = printer._print(self.rhs)
-        return f"{lhs_latex} = {rhs_latex}"
 
 
-def solve(f, *symbols, **flags):
+
+def pdf_to_svg(input_dir, output_dir=None, delete_original=False, inkscape_path=None):
     """
-    Override of sympy `solve()`.
+    Convert PDF files in the specified directory to SVG format using Inkscape.
 
-    If passed an expression and variable(s) to solve for it behaves
-    almost the same as normal solve with `dict = True`, except that solutions
-    are wrapped in a FiniteSet() to guarantee that the output will be pretty
-    printed in Jupyter like environments.
-
-    If passed an equation or equations it returns solutions as a
-    `FiniteSet()` of solutions, where each solution is represented by an
-    equation or set of equations.
-
-    To get a Python `list` of solutions (pre-0.11.0 behavior) rather than a
-    `FiniteSet` issue the command `algwsym_config.output.solve_to_list = True`.
-    This also prevents pretty-printing in IPython and Jupyter.
+    Parameters
+    ----------
+    input_dir : str
+        The directory containing the PDF files to be converted.
+    output_dir : str, optional
+        The directory where the SVG files will be saved. If not specified, SVG files
+        will be saved in the same directory as the input PDF files.
+    delete_original : bool, optional
+        Whether to delete the original PDF files after conversion. Default is `False`.
+    inkscape_path : str, optional
+        The path to the Inkscape executable. If not provided, a default path is used.
 
     Examples
     --------
-    >>> a, b, c, x, y = symbols('a b c x y', real = True)
-    >>> import sys
-    >>> sys.displayhook = __command_line_printing__ # set by default on normal initialization.
-    >>> eq1 = Eqn(abs(2*x+y),3)
-    >>> eq2 = Eqn(abs(x + 2*y),3)
-    >>> B = solve((eq1,eq2))
+    >>> pdf_to_svg('pdf_files', output_dir='svg_files', delete_original=True, inkscape_path='/path/to/inkscape')
+    
+    Converts PDF files in 'pdf_files' directory to SVG format.
+    
+    - Saves the resulting SVG files in 'svg_files'.
+    - Deletes the original PDF files if `delete_original` is set to `True`.
+    - Requires Inkscape installed at the specified `inkscape_path` or a default path.
 
-    Default human readable output on command line
-    >>> B
-    {{x = -3, y = 3}, {x = -1, y = -1}, {x = 1, y = 1}, {x = 3, y = -3}}
-
-    To get raw output turn off by setting
-    >>> algwsym_config.output.human_text=False
-    >>> B
-    FiniteSet(FiniteSet(Equation(x, -3), Equation(y, 3)), FiniteSet(Equation(x, -1), Equation(y, -1)), FiniteSet(Equation(x, 1), Equation(y, 1)), FiniteSet(Equation(x, 3), Equation(y, -3)))
-
-    Pre-0.11.0 behavior where a python list of solutions is returned
-    >>> algwsym_config.output.solve_to_list = True
-    >>> solve((eq1,eq2))
-    [[Equation(x, -3), Equation(y, 3)], [Equation(x, -1), Equation(y, -1)], [Equation(x, 1), Equation(y, 1)], [Equation(x, 3), Equation(y, -3)]]
-    >>> algwsym_config.output.solve_to_list = False # reset to default
-
-    `algwsym_config.output.human_text = True` with
-    `algwsym_config.output.how_code=True` shows both.
-    In Jupyter-like environments `show_code=True` yields the Raw output and
-    a typeset version. If `show_code=False` (the default) only the
-    typeset version is shown in Jupyter.
-    >>> algwsym_config.output.show_code=True
-    >>> algwsym_config.output.human_text=True
-    >>> B
-    Code version: FiniteSet(FiniteSet(Equation(x, -3), Equation(y, 3)), FiniteSet(Equation(x, -1), Equation(y, -1)), FiniteSet(Equation(x, 1), Equation(y, 1)), FiniteSet(Equation(x, 3), Equation(y, -3)))
-    {{x = -3, y = 3}, {x = -1, y = -1}, {x = 1, y = 1}, {x = 3, y = -3}}
-    """
-    from sympy.solvers.solvers import solve
-    from sympy.sets.sets import FiniteSet
-    from IPython.display import display
-    newf =[]
-    solns = []
-    displaysolns = []
-    contains_eqn = False
-    if hasattr(f,'__iter__'):
-        for k in f:
-            if isinstance(k, Equation):
-                newf.append(k.lhs-k.rhs)
-                contains_eqn = True
-            else:
-                newf.append(k)
-    else:
-        if isinstance(f, Equation):
-            newf.append(f.lhs - f.rhs)
-            contains_eqn = True
-        else:
-            newf.append(f)
-    flags['dict'] = True
-    result = solve(newf, *symbols, **flags)
-    if contains_eqn:
-        if len(result[0]) == 1:
-            for k in result:
-                for key in k.keys():
-                    val = k[key]
-                    tempeqn = Eqn(key, val)
-                    solns.append(tempeqn)
-        else:
-            for k in result:
-                solnset = []
-                for key in k.keys():
-                    val = k[key]
-                    tempeqn = Eqn(key, val)
-                    solnset.append(tempeqn)
-                if not algwsym_config.output.solve_to_list:
-                    solnset = FiniteSet(*solnset)
-                solns.append(solnset)
-    else:
-        solns = result
-    if algwsym_config.output.solve_to_list:
-        return list(solns)
-    else:
-        return FiniteSet(*solns)
-
-def solveset(f, symbols, domain=sympy.Complexes):
-    """
-    Very experimental override of sympy solveset, which we hope will replace
-    solve. Much is not working. It is not clear how to input a system of
-    equations unless you directly select `linsolve`, etc...
-    """
-    from sympy.solvers import solveset as solve
-    from IPython.display import display
-    newf = []
-    solns = []
-    displaysolns = []
-    contains_eqn = False
-    if hasattr(f, '__iter__'):
-        for k in f:
-            if isinstance(k, Equation):
-                newf.append(k.lhs - k.rhs)
-                contains_eqn = True
-            else:
-                newf.append(k)
-    else:
-        if isinstance(f, Equation):
-            newf.append(f.lhs - f.rhs)
-            contains_eqn = True
-        else:
-            newf.append(f)
-    result = solve(*newf, symbols, domain=domain)
-    # if contains_eqn:
-    #     if len(result[0]) == 1:
-    #         for k in result:
-    #             for key in k.keys():
-    #                 val = k[key]
-    #                 tempeqn = Eqn(key, val)
-    #                 solns.append(tempeqn)
-    #         display(*solns)
-    #     else:
-    #         for k in result:
-    #             solnset = []
-    #             displayset = []
-    #             for key in k.keys():
-    #                 val = k[key]
-    #                 tempeqn = Eqn(key, val)
-    #                 solnset.append(tempeqn)
-    #                 if algwsym_config.output.show_solve_output:
-    #                     displayset.append(tempeqn)
-    #             if algwsym_config.output.show_solve_output:
-    #                 displayset.append('-----')
-    #             solns.append(solnset)
-    #             if algwsym_config.output.show_solve_output:
-    #                 for k in displayset:
-    #                     displaysolns.append(k)
-    #         if algwsym_config.output.show_solve_output:
-    #             display(*displaysolns)
-    # else:
-    solns = result
-    return solns
-
-def sqrt(arg, evaluate = None):
-    """
-    Override of sympy convenience function `sqrt`. Simply divides equations
-    into two sides if `arg` is an instance of `Equation`. This avoids an
-    issue with the way sympy is delaying specialized applications of _Pow_ on
-    objects that are not basic sympy expressions.
-    """
-    from sympy.functions.elementary.miscellaneous import sqrt as symsqrt
-    if isinstance(arg, Equation):
-        return Equation(symsqrt(arg.lhs, evaluate), symsqrt(arg.rhs, evaluate))
-    else:
-        return symsqrt(arg,evaluate)
-
-# Pick up the docstring for sqrt from sympy
-from sympy.functions.elementary.miscellaneous import sqrt as symsqrt
-sqrt.__doc__+=symsqrt.__doc__
-del symsqrt
-
-def root(arg, n, k = 0, evaluate = None):
-    """
-    Override of sympy convenience function `root`. Simply divides equations
-    into two sides if `arg`  or `n` is an instance of `Equation`. This
-    avoids an issue with the way sympy is delaying specialized applications
-    of _Pow_ on objects that are not basic sympy expressions.
-    """
-    from sympy.functions.elementary.miscellaneous import root as symroot
-    if isinstance(arg, Equation):
-        return Equation(symroot(arg.lhs, n, k, evaluate),
-                        symroot(arg.rhs, n, k, evaluate))
-    if isinstance(n, Equation):
-        return Equation(symroot(arg, n.lhs, k, evaluate),
-                        symroot(arg, n.rhs, k, evaluate))
-    else:
-        return symroot(arg, n, k, evaluate)
-
-# pick up the docstring for root from sympy
-from sympy.functions.elementary.miscellaneous import root as symroot
-root.__doc__+=symroot.__doc__
-del symroot
-
-def Heaviside(arg, **kwargs):
-    """
-    Overide of the Heaviside function as implemented in Sympy. Get a recursion
-    error if use the normal class extension of a function to do this.
+    Notes
+    -----
+    - Make sure to specify the correct path to the Inkscape executable.
+    - The `--pdf-poppler` option in Inkscape is used for PDF conversion.
 
     """
-    from sympy.functions.special.delta_functions import Heaviside as symHeav
-    if isinstance(arg, Equation):
-        return Equation(symHeav((arg.lhs), **kwargs),symHeav((arg.rhs),
-                                                             **kwargs))
-    else:
-        return symHeav(arg, **kwargs)
-# Pick up the docstring for Heaviside from Sympy.
-from sympy.functions.special.delta_functions import Heaviside as symHeav
-Heaviside.__doc__ += symHeav.__doc__
-del symHeav
+    if inkscape_path is None:
+        # Default Inkscape executable path (update this to your Inkscape installation path)
+        inkscape_path = r'C:\Program Files\Inkscape\bin\inkscape.exe'
 
-def collect(expr, syms, func=None, evaluate=None, exact=False,
-            distribute_order_term=True):
-    """
-    Override of sympy `collect()`.
-    """
-    from sympy.simplify.radsimp import collect
-    _eval_collect = getattr(expr, '_eval_collect', None)
-    if _eval_collect is not None:
-        return _eval_collect(syms, func, evaluate,
-                             exact, distribute_order_term)
-    else:
-        return collect(expr, syms, func, evaluate, exact,
-                       distribute_order_term)
+    if output_dir is None:
+        output_dir = input_dir
 
-class Equality(sympy.Equality):
-    """
-    Extension of Equality class to include the ability to convert it to an
-    Equation.
-    """
-    def to_Equation(self):
-        """
-        Return: recasts the Equality as an Equation.
-        """
-        return Equation(self.lhs,self.rhs)
+    for filename in os.listdir(input_dir):
+        if filename.endswith(".pdf"):
+            input_file = os.path.join(input_dir, filename)
+            output_file = os.path.join(output_dir, os.path.splitext(filename)[0] + ".svg")
+            
+            subprocess.run([inkscape_path, "--export-type=svg", "--pdf-poppler", "-l", f'--export-filename={output_file}', input_file])
 
-    def to_Eqn(self):
-        """
-        Synonym for to_Equation.
-        Return: recasts the Equality as an Equation.
-        """
-        return self.to_Equation()
+            if delete_original:
+                os.remove(input_file)
 
-Eq = Equality
 
-def __FiniteSet__repr__override__(self):
-    """Override of the `FiniteSet.__repr__(self)` to overcome sympy's
-    inconsistent wrapping of Finite Sets which prevents reliable use of
-    copy and paste of the code representation.
-    """
-    insidestr = ""
-    for k in self.args:
-        insidestr += k.__repr__() +', '
-    insidestr = insidestr[:-2]
-    reprstr = "FiniteSet("+ insidestr + ")"
-    return reprstr
 
-sympy.sets.FiniteSet.__repr__ = __FiniteSet__repr__override__
-
-def __FiniteSet__str__override__(self):
-    """Override of the `FiniteSet.__str__(self)` to overcome sympy's
-    inconsistent wrapping of Finite Sets which prevents reliable use of
-    copy and paste of the code representation.
-    """
-    insidestr = ""
-    for k in self.args:
-        insidestr += str(k) + ', '
-    insidestr = insidestr[:-2]
-    strrep = "{"+ insidestr + "}"
-    return strrep
-
-sympy.sets.FiniteSet.__str__ = __FiniteSet__str__override__
-
-#####
-# Extension of the Function class. For incorporation into SymPy this should
-# become part of the class
-#####
-class EqnFunction(sympy.Function):
-    """
-    Extension of the sympy Function class to understand equations. Each
-    sympy function impacted by this extension is listed in the documentation
-    that follows.
-    """
-    def __new__(cls, *args, **kwargs):
-        n = len(args)
-        eqnloc = None
-        neqns = 0
-        newargs = []
-        for k in args:
-            newargs.append(k)
-        if (n > 0):
-            for i in range(n):
-                if isinstance(args[i], Equation):
-                    neqns += 1
-                    eqnloc = i
-            if neqns > 1:
-                raise NotImplementedError('Function calls with more than one '
-                                          'Equation as a parameter are not '
-                                          'supported. You may be able to get '
-                                          'your desired outcome using .applyrhs'
-                                          ' and .applylhs.')
-            if neqns == 1:
-                newargs[eqnloc] = args[eqnloc].lhs
-                lhs = super().__new__(cls, *newargs, **kwargs)
-                newargs[eqnloc] = args[eqnloc].rhs
-                rhs = super().__new__(cls, *newargs, **kwargs)
-                return Equation(lhs,rhs)
-        return super().__new__(cls, *args, **kwargs)
-
-def str_to_extend_sympy_func(func:str):
-    """
-    Generates the string command to execute for a sympy function to
-    gain the properties of the extended EqnFunction class.
-    """
-    execstr = 'class ' + str(func) + '(' + str(
-        func) + ',EqnFunction):\n    ' \
-                'pass\n'
-    return execstr
-
-# TODO: Below will not be needed when incorporated into SymPy.
-# This is hacky, but I have not been able to come up with another way
-# of extending the functions programmatically, if this is separate package
-# from sympy that extends it after loading sympy.
-#  Functions listed in `skip` are not applicable to equations or cannot be
-#  extended because of `mro` error or `metaclass conflict`. This reflects
-#  that some of these are not members of the Sympy Function class.
-
-# Overridden elsewhere
-_extended_ = ('sqrt', 'root', 'Heaviside')
-
-# Either not applicable to equations or have not yet figured out a way
-# to systematically apply to an equation.
-# TODO examine these more carefully (top priority: real_root, cbrt, Ynm_c).
-_not_applicable_to_equations_ = ('Min', 'Max', 'Id', 'real_root', 'cbrt',
-        'unbranched_argument', 'polarify', 'unpolarify',
-        'piecewise_fold', 'E1', 'Eijk', 'bspline_basis',
-        'bspline_basis_set', 'interpolating_spline', 'jn_zeros',
-        'jacobi_normalized', 'Ynm_c', 'piecewise_exclusive', 'Piecewise',
-        'motzkin', 'hyper','meijerg', 'chebyshevu_root', 'chebyshevt_root',
-        'betainc_regularized')
-_skip_ = _extended_ + _not_applicable_to_equations_
-
-for func in sympy.functions.__all__:
-
-    if func not in _skip_:
-        try:
-            pass
-        except TypeError:
-            from warnings import warn
-            warn('SymPy function/operation ' + str(func) + ' may not work ' \
-                'properly with Equations. If you use it with Equations, ' \
-                'validate its behavior. We are working to address this ' \
-                'issue.')
-
-# Redirect python abs() to Abs()
-abs = sympy.Abs
