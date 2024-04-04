@@ -34,17 +34,26 @@ def eq_subs(target_eq, *substitution_eqs):
         target_eq = target_eq.subs(eq.lhs, eq.rhs)           
     return target_eq
 
-def display_eq(lhs:str = 'x', rhs = 20):
-    display(sympy.Eq(sympy.Symbol(lhs), rhs))
+def display_eq(*exprs):
+    for i in range(0, len(exprs), 2):
+        lhs = exprs[i]
+        rhs = exprs[i + 1]
 
-def type_application(exprs, func):
+        if isinstance(lhs, str):
+            lhs = sympy.Symbol(lhs)
+        if isinstance(rhs, str):
+            rhs = sympy.Symbol(rhs)
+            
+        display(sympy.Eq(lhs, rhs))
+
+def __type_application(exprs, func):
     if isinstance(exprs, numpy.ndarray):  
         result = [] 
 
         for expr in exprs:
             result.append(func(expr))   
 
-        return numpy.array(result).astype(type(result[0]))
+        return numpy.array(result)
     
     if isinstance(exprs, dict):
         result_dict = {}
@@ -94,19 +103,30 @@ def to_float(exprs, base_units=[m,N,second, rad]):
             return expr_numerical
         else:
             return expr
-        
-    return type_application(exprs, transformation)
+    if isinstance(__type_application(exprs,transformation), numpy.ndarray):
+        return __type_application(exprs, transformation).astype(float)
+    else:
+        return __type_application(exprs, transformation)
     
 def to_convert(exprs, units):
     def convert_unit(expr):
-        if isinstance(expr, (sympy.core.mul.Mul, sympy.core.add.Add)):
-            expr_converted = convert_to(expr, units)                              
-            return expr_converted
-        else:
-            return expr
-    return type_application(exprs, convert_unit)
+        expr_converted = convert_to(expr, units)                              
+        return expr_converted
 
-def dict_to_table(d: Dict):
+    return __type_application(exprs, convert_unit)
+
+
+def to_dict(*equations):
+    
+    dict_store = {
+
+    }
+    for equation in equations:
+        dict_store[equation.lhs] = equation.rhs
+
+    return dict_store
+
+def dict_to_table(d: Dict, title='Parameter'):
     """
     Create a Markdown table from a dictionary, with sorted keys in alphabetical order.
 
@@ -131,7 +151,7 @@ def dict_to_table(d: Dict):
 
     sorted_items = sorted(d.items(), key=lambda item: str(item[0]))  # Sort keys alphabetically
     n = len(sorted_items)
-    table = "|  Parameter  | \u200B  |\n|---|---|\n"    
+    table = f"|  {title}  | \u200B  |\n|---|---|\n"    
     for i, (key, value) in enumerate(sorted_items):
         if isinstance(key, str):
             key_sym = sympy.Symbol(key)  # Create a custom symbol from the string
@@ -200,6 +220,5 @@ def pdf_to_svg(input_dir, output_dir=None, delete_original=False, inkscape_path=
 
             if delete_original:
                 os.remove(input_file)
-
 
 

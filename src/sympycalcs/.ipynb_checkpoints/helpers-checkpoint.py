@@ -34,19 +34,28 @@ def eq_subs(target_eq, *substitution_eqs):
         target_eq = target_eq.subs(eq.lhs, eq.rhs)           
     return target_eq
 
-def display_eq(lhs:str = 'x', rhs = 20):
-    display(sympy.Eq(sympy.Symbol(lhs), rhs))
+def display_eq(*exprs):
+    for i in range(0, len(exprs), 2):
+        lhs = exprs[i]
+        rhs = exprs[i + 1]
 
-def type_application(exprs, func):
-    if isinstance(exprs,(numpy.ndarray)):  
+        if isinstance(lhs, str):
+            lhs = sympy.Symbol(lhs)
+        if isinstance(rhs, str):
+            rhs = sympy.Symbol(rhs)
+            
+        display(sympy.Eq(lhs, rhs))
+
+def __type_application(exprs, func):
+    if isinstance(exprs, numpy.ndarray):  
         result = [] 
 
         for expr in exprs:
             result.append(func(expr))   
 
-        return numpy.array(result).astype(float)
+        return numpy.array(result)
     
-    if isinstance(exprs, (dict)):
+    if isinstance(exprs, dict):
         result_dict = {}
 
         for key, value in exprs.items():
@@ -54,13 +63,13 @@ def type_application(exprs, func):
 
         return result_dict
 
-    if isinstance(exprs, (sympy.core.relational.Equality)):
+    if isinstance(exprs, sympy.core.relational.Equality):
         lhs = func(exprs.lhs)
         rhs = func(exprs.rhs)
         return sympy.Eq(lhs, rhs)
     
     else:
-        return transformation(exprs)
+        return func(exprs)
     
 
 def to_float(exprs, base_units=[m,N,second, rad]):
@@ -94,9 +103,17 @@ def to_float(exprs, base_units=[m,N,second, rad]):
             return expr_numerical
         else:
             return expr
-    type_application(exprs, transformation)
+    if isinstance(__type_application(exprs,transformation), numpy.ndarray):
+        return __type_application(exprs, transformation).astype(float)
+    else:
+        return __type_application(exprs, transformation)
     
+def to_convert(exprs, units):
+    def convert_unit(expr):
+        expr_converted = convert_to(expr, units)                              
+        return expr_converted
 
+    return __type_application(exprs, convert_unit)
 
 def dict_to_table(d: Dict):
     """
@@ -192,6 +209,5 @@ def pdf_to_svg(input_dir, output_dir=None, delete_original=False, inkscape_path=
 
             if delete_original:
                 os.remove(input_file)
-
 
 
