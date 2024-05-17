@@ -7,46 +7,21 @@ from typing import Dict
 import subprocess
 import os
 
-
-
-
-
-def eq_subs(target_eq, *substitution_eqs):
+def __type_application(exprs, func):
     """
-    Substitute variables in the target equation using the provided substitution equations.
+    Applies the given function `func` to the expressions `exprs` based on their type.
 
-    Parameters:
-    target_eq (sympy.Eq): The equation in which variables will be substituted.
-    substitution_eqs (sympy.Eq): The equations representing the substitutions to be made.
+    Args:
+        exprs: The expressions to apply the function to.
+        func: The function to apply to the expressions.
 
     Returns:
-    sympy.Eq: The target equation with variables substituted.
+        The result of applying the function to the expressions.
 
-    Example:
-    >>> from sympy import symbols, Eq
-    >>> x, y, z = symbols('x y z')
-    >>> eq1 = Eq(x + y, z)
-    >>> eq2 = Eq(x, 2)
-    >>> eq_subs(eq1, eq2)
-    Eq(2 + y, z)
+    Raises:
+        None.
     """
-    for eq in substitution_eqs:
-        target_eq = target_eq.subs(eq.lhs, eq.rhs)           
-    return target_eq
 
-def display_eq(*exprs):
-    for i in range(0, len(exprs), 2):
-        lhs = exprs[i]
-        rhs = exprs[i + 1]
-
-        if isinstance(lhs, str):
-            lhs = sympy.Symbol(lhs)
-        if isinstance(rhs, str):
-            rhs = sympy.Symbol(rhs)
-            
-        display(sympy.Eq(lhs, rhs))
-
-def __type_application(exprs, func):
     if isinstance(exprs, numpy.ndarray):  
         result = [] 
 
@@ -70,7 +45,38 @@ def __type_application(exprs, func):
     
     else:
         return func(exprs)
-    
+
+
+def display_eq(*exprs):
+    for i in range(0, len(exprs), 2):
+        lhs = exprs[i]
+        rhs = exprs[i + 1]
+
+        if isinstance(lhs, str):
+            lhs = sympy.Symbol(lhs)
+        if isinstance(rhs, str):
+            rhs = sympy.Symbol(rhs)
+            
+        display(sympy.Eq(lhs, rhs))  
+
+def to_subs(exprs, *substitution_eqs):
+    """
+    Apply substitutions to the given expressions.
+
+    Args:
+        exprs (sympy.Expr or list): The expression(s) to apply substitutions to.
+        *substitution_eqs (sympy.Eq): Variable substitution equations.
+
+    Returns:
+        sympy.Expr or list: The expressions with substitutions applied.
+
+    """
+    def substitution(expr):
+        for eq in substitution_eqs:
+            expr = expr.subs(eq.lhs, eq.rhs)
+        return expr
+                
+    return __type_application(exprs, substitution)
 
 def to_float(exprs, base_units=[m,N,second, rad]):
     """
@@ -114,6 +120,10 @@ def to_convert(exprs, units):
         return expr_converted
 
     return __type_application(exprs, convert_unit)
+
+def to_num(exprs, store, parameters):
+    """This function quickly tries to display the numerical values, based on the parameters and previous calculations"""
+
 
 
 def to_dict(*equations):
@@ -167,10 +177,6 @@ def dict_to_table(d: Dict, title='Parameter'):
     if n % 2 == 1:
         table += "| \u200B  |\n"
     display(Markdown(table))
-
-
-
-
 
 def pdf_to_svg(input_dir, output_dir=None, delete_original=False, inkscape_path=None):
     """

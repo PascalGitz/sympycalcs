@@ -24,7 +24,7 @@ def test_eq_subs():
     eq_3 = Eq(c, t * k)
 
     # Perform substitutions
-    result_eq = eq_subs(eq_1, eq_1, eq_2, eq_3)
+    result_eq = to_subs(eq_1, eq_1, eq_2, eq_3)
 
     # Check if substitutions are applied correctly
     expected_eq = Eq(a, q * v + t * k)
@@ -32,7 +32,7 @@ def test_eq_subs():
 
     # Additional test case
     eq_4 = Eq(q, 5)
-    result_eq = eq_subs(eq_1, eq_1, eq_2, eq_3, eq_4)
+    result_eq = to_subs(eq_1, eq_1, eq_2, eq_3, eq_4)
 
     # Check if substitutions are applied correctly
     expected_eq = Eq(a, 5 * v + t * k)
@@ -40,7 +40,7 @@ def test_eq_subs():
 
     # Test with a self-referencing equation
     eq_5 = Eq(b, a)
-    result_eq = eq_subs(eq_5, eq_5)
+    result_eq = to_subs(eq_5, eq_5)
 
     # Check if the function handles self-referencing equations correctly
     assert result_eq == eq_5
